@@ -28,9 +28,7 @@ class AriesAuditBrain(threading.Thread):
                         continue
 
                 # 1. Ekstrak Ilmu (Incremental)
-                self.learner.extract_and_synthesize()
-
-                # 2. Sintesis Teori (use extract_and_synthesize result as count)
+                # 1. Ekstrak Ilmu (Incremental) & Capture count
                 count = self.learner.extract_and_synthesize()
 
                 # 3. Memory Compaction
