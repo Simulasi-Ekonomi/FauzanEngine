@@ -159,8 +159,7 @@ function pushUndo(actors: Record<string, NeoActor>) {
 
 // Backend API URL - try deployed backend first, fall back to local
 const API_BASE = (() => {
-  // Will be set after deployment
-  const deployed = '';
+  const deployed = 'https://neoengine-backend-vlpphblg.fly.dev';
   if (deployed) return deployed;
   return '';  // relative URL for same-origin or local dev
 })();
