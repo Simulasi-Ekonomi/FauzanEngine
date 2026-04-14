@@ -88,6 +88,8 @@ export function MenuBar() {
       { label: 'Generate Game Template...', action: () => store.sendMessage('/template') },
       { label: 'AI Asset Generator', action: () => store.sendMessage('/assets') },
       { separator: true },
+      { label: 'Monetization Manager...', action: () => (window as any).__neoOpenMonetization?.() },
+      { separator: true },
       { label: 'Build Lighting', action: () => store.addSystemMessage('[Build] Lighting build started...') },
       { label: 'Build Navigation', action: () => store.addSystemMessage('[Build] Navigation mesh build started...') },
       { separator: true },
