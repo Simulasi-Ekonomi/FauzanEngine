@@ -58,7 +58,7 @@ class AriesLockManager:
         import traceback
         print("🚨 [TRACING] SIAPA YANG MANGGIL LOCK SEBAGAI FUNGSI:")
         traceback.print_stack()
-        return self._lock.acquire() 
+        raise TypeError("AriesLockManager should not be called as a function. Use .safe() or .allow() instead.")
 
     @property
     def lock(self):
