@@ -160,6 +160,8 @@ class AriesCognitiveBridge:
                 if cycle_count % 5 == 0:
                     self.modules['world_model'].train()
 
+                time.sleep(self.interval)
+
             except Exception as e:
                 print(f"⚠️ [BRIDGE CRASH] {e}", flush=True)
                 traceback.print_exc()
