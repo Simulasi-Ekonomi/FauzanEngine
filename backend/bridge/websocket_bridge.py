@@ -30,7 +30,7 @@ class ConnectionManager:
     async def broadcast(self, message: str, exclude: WebSocket | None = None):
         """Broadcast a message to all connected clients."""
         disconnected = []
-        for connection in self.active_connections:
+        for connection in list(self.active_connections):
             if connection == exclude:
                 continue
             try:
