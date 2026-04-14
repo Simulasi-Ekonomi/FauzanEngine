@@ -447,12 +447,32 @@ PERINTAH DASAR:
   "buat lampu" / "buat camera" - Tambah light/camera
   "hapus semua" - Bersihkan scene
 
+3D MODEL GENERATOR (seperti Trellis):
+  "buat rumah" - Generate model rumah 3D
+  "buat kastil" - Generate kastil medieval
+  "buat dragon" / "buat naga" - Generate naga 3D
+  "buat knight" - Generate karakter ksatria
+  "buat mobil" - Generate mobil 3D
+  "buat pesawat" - Generate pesawat luar angkasa
+  "buat pohon" - Generate pohon
+  "buat pedang" - Generate senjata
+  "buat robot" / "buat wizard" - Generate karakter
+  "buat gunung" / "buat tank" - Dan banyak lagi!
+
 GAME TEMPLATES:
   "buat game sudoku" - Puzzle game
   "buat game farmville" - Farming simulation
   "buat game fps" - First person shooter
   "buat game platformer" - Side-scrolling game
   "buat game rpg" - Role-playing game
+
+BUILD & PUBLISH:
+  "build" / "buat apk" - Build game untuk Android/iOS/Web
+  "upload play store" - Publish ke Google Play Store
+  "deploy" - Deploy game ke web
+
+PLAY MODE:
+  "play game" / "jalankan game" - Test game di browser
 
 SCENE:
   "buat scene" / "buat level" - Buat scene dasar
@@ -468,10 +488,42 @@ KEYBOARD SHORTCUTS:
   Ctrl+S - Save Scene
   Ctrl+N - New Scene
   Ctrl+D - Duplicate
-  Del - Delete selected
+  Del - Delete selected`,
+      actions: [],
+    };
+  }
 
-Untuk AI penuh (generate code, desain level detail):
-Set API key di backend: export AI_API_KEY=your_key`,
+  // 3D Model generation
+  if (cmd.includes('buat model') || cmd.includes('generate model') || cmd.includes('buat 3d') ||
+      cmd.includes('buat rumah') || cmd.includes('buat kastil') || cmd.includes('buat castle') ||
+      cmd.includes('buat karakter') || cmd.includes('buat knight') || cmd.includes('buat robot') ||
+      cmd.includes('buat pohon') || cmd.includes('buat tree') || cmd.includes('buat dragon') || cmd.includes('buat naga') ||
+      cmd.includes('buat mobil') || cmd.includes('buat car') || cmd.includes('buat pesawat') || cmd.includes('buat spaceship') ||
+      cmd.includes('buat pedang') || cmd.includes('buat sword') || cmd.includes('buat tank') ||
+      cmd.includes('buat wizard') || cmd.includes('buat penyihir') || cmd.includes('buat peti') || cmd.includes('buat chest') ||
+      cmd.includes('buat gunung') || cmd.includes('buat mountain') || cmd.includes('buat api unggun') || cmd.includes('buat campfire') ||
+      cmd.includes('buat tong') || cmd.includes('buat barrel') || cmd.includes('buat house') ||
+      cmd.includes('buat helikopter') || cmd.includes('buat helicopter') || cmd.includes('buat kuda') || cmd.includes('buat horse')) {
+    return {
+      response: `__3D_MODEL_GENERATE__:${command}`,
+      actions: [],
+    };
+  }
+
+  // Build & Publish
+  if (cmd.includes('build') || cmd.includes('package') || cmd.includes('publish') || cmd.includes('upload play store') ||
+      cmd.includes('upload ke play store') || cmd.includes('deploy') || cmd.includes('buat apk')) {
+    return {
+      response: `__OPEN_BUILD_DIALOG__`,
+      actions: [],
+    };
+  }
+
+  // Play mode with game scripts
+  if (cmd.includes('play game') || cmd.includes('jalankan game') || cmd.includes('test game') || cmd.includes('run game') ||
+      cmd.includes('mainkan') || cmd.includes('coba game')) {
+    return {
+      response: `__START_PLAY_MODE__`,
       actions: [],
     };
   }
@@ -481,10 +533,13 @@ Set API key di backend: export AI_API_KEY=your_key`,
     response: `Perintah diterima: "${command}"
 
 Saya Aries AI, bisa bantu kamu buat game! Coba perintah:
-- "buat cube" / "add sphere" - Tambah objek
+- "buat cube" / "add sphere" - Tambah objek 3D dasar
+- "buat rumah" / "buat dragon" / "buat mobil" - Generate model 3D
 - "buat game farmville" - Template farming game
 - "buat game sudoku" - Template puzzle game
 - "buat scene" - Buat level dasar
+- "build" / "upload play store" - Build & publish game
+- "play game" - Test game di play mode
 - "help" - Lihat semua perintah
 
 Untuk AI penuh dengan generate code & level detail, jalankan backend dengan API key.`,

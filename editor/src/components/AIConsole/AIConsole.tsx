@@ -2,12 +2,24 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useEditorStore } from '../../stores/editorStore';
 
 export function AIConsole() {
-  const { chatMessages, isAiThinking, sendMessage } = useEditorStore();
+  const chatMessages = useEditorStore((s) => s.chatMessages);
+  const isAiThinking = useEditorStore((s) => s.isAiThinking);
+  const sendMessage = useEditorStore((s) => s.sendMessage);
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages]);
+
+  // Watch for special command responses
+  useEffect(() => {
+    if (chatMessages.length === 0) return;
+    const lastMsg = chatMessages[chatMessages.length - 1];
+    if (lastMsg.role === 'assistant' && lastMsg.content.startsWith('__')) {
+      const handler = (window as any).__neoHandleSpecialCommand;
+      if (handler) handler(lastMsg.content);
+    }
   }, [chatMessages]);
 
   const handleSend = () => {
@@ -23,6 +35,11 @@ export function AIConsole() {
     }
   };
 
+  // Filter out special command messages from display
+  const displayMessages = chatMessages.filter(msg =>
+    !(msg.role === 'assistant' && msg.content.startsWith('__'))
+  );
+
   return (
     <div className="neo-panel" style={{ height: '100%' }}>
       <div className="neo-panel-header">
@@ -36,7 +53,7 @@ export function AIConsole() {
       </div>
       <div className="ai-console">
         <div className="ai-messages">
-          {chatMessages.map((msg) => (
+          {displayMessages.map((msg) => (
             <div key={msg.id} className={`ai-message ${msg.role}`}>
               {msg.role === 'user' && (
                 <div style={{ fontSize: 9, color: '#88bbff', marginBottom: 2 }}>You</div>
@@ -72,7 +89,7 @@ export function AIConsole() {
         <div className="ai-input-area">
           <input
             type="text"
-            placeholder="Ketik perintah untuk Aries AI... (contoh: buat cube merah di posisi 0,5,0)"
+            placeholder="Ketik perintah... (buat rumah, buat game farmville, build, help)"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
