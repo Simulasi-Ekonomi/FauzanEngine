@@ -13,6 +13,16 @@ class AriesCognitiveBridge:
         self.status = "Initializing"
         self.reward_history = deque(maxlen=20)  # buffer untuk 20 reward terakhir
 
+    def start_autonomy(self):
+        """Start the autonomous cognitive bridge lifecycle in a daemon thread."""
+        if not self._safe_import():
+            print("[BRIDGE] Safe import failed, autonomy not started")
+            return
+        t = threading.Thread(target=self._main_lifecycle, daemon=True)
+        t.start()
+        self.status = "Running"
+        print("[BRIDGE] Autonomous cognitive lifecycle started")
+
     # =========================================================
     # SAFE IMPORT
     # =========================================================

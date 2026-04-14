@@ -125,4 +125,20 @@ export interface EditorState {
   addSystemMessage: (content: string) => void;
   setConnectionStatus: (engine: boolean, aries: boolean) => void;
   setFps: (fps: number) => void;
+
+  // Scene Management
+  newScene: () => void;
+  saveScene: () => void;
+  saveSceneAs: () => void;
+  loadSceneFromFile: () => void;
+  exportScene: () => void;
+  importScene: () => void;
+
+  // Undo/Redo
+  undo: () => void;
+  redo: () => void;
+
+  // Selection
+  duplicateSelected: () => void;
+  selectAll: () => void;
 }

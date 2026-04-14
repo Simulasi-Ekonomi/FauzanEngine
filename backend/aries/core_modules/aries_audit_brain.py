@@ -30,14 +30,14 @@ class AriesAuditBrain(threading.Thread):
                 # 1. Ekstrak Ilmu (Incremental)
                 self.learner.extract_and_synthesize()
 
-                # 2. Sintesis Teori
-                count = self.learner.synthesize_new_theory()
+                # 2. Sintesis Teori (use extract_and_synthesize result as count)
+                count = self.learner.extract_and_synthesize()
 
                 # 3. Memory Compaction
-                if hasattr(self.engine, 'mem_guard'):
-                    self.engine.mem_guard.compact()
+                if hasattr(self.engine, 'mem_guard') and hasattr(self.engine.mem_guard, 'enforce'):
+                    self.engine.mem_guard.enforce()
 
-                print(f"[ARIES REFLECTION] Cycle Success: {count} theories synthesized.")
+                print(f"[ARIES REFLECTION] Cycle Success: {count} nodes processed.")
             except Exception as e:
                 print(f"[AUDIT ERROR] {e}")
 

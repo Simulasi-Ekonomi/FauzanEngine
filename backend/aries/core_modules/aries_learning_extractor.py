@@ -77,7 +77,7 @@ class AriesLearningExtractor:
     def learn_from_chat(self, prompt):
         # Implementasi sederhana untuk learning dari interaksi
         kb_data = self._load_json(self.kb_path)
-        key = f"chat_{int(time.time())}"
+        key = f"chat_{int(datetime.now().timestamp())}"
         kb_data[key] = prompt
         with open(self.kb_path, 'w') as f:
             json.dump(kb_data, f)

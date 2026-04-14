@@ -109,6 +109,9 @@ async def websocket_endpoint(websocket: WebSocket):
                 
     except WebSocketDisconnect:
         manager.disconnect(websocket)
+    except Exception as e:
+        print(f"[WS] Error: {e}")
+        manager.disconnect(websocket)
 
 
 @app.get("/")
