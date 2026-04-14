@@ -106,6 +106,8 @@ Java_com_neoengine_core_NeoEngineBridge_nativeInit(
 
     if (!NeoJNI::g_AssetManager) {
         NEO_LOGE("nativeInit: Failed to get AssetManager");
+        env->DeleteGlobalRef(NeoJNI::g_Activity);
+        NeoJNI::g_Activity = nullptr;
         return JNI_FALSE;
     }
 
