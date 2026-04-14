@@ -55,6 +55,11 @@ export function App() {
       addSystemMessage('[Build] Opening Build & Publish dialog...');
       return true;
     }
+    if (response === '__OPEN_MONETIZATION__') {
+      setMonetizationOpen(true);
+      addSystemMessage('[Monetization] Opening Monetization Manager...');
+      return true;
+    }
     if (response === '__START_PLAY_MODE__') {
       startPlayMode();
       return true;

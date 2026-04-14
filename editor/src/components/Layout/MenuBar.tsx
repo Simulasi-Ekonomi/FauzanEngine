@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useEditorStore } from '../../stores/editorStore';
+import { storeDocument, processDocumentForAries } from '../../engine/AriesBrain';
 
 interface MenuItem {
   label?: string;
@@ -51,6 +52,26 @@ export function MenuBar() {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const store = useEditorStore();
 
+  // Import Word/PDF document handler
+  const handleImportDocument = (accept: string) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = accept;
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const text = ev.target?.result as string;
+        storeDocument(file.name, text);
+        const result = processDocumentForAries(file.name, text);
+        store.addSystemMessage(result.response);
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  };
+
   const menuDefs: Record<string, MenuItem[]> = {
     File: [
       { label: 'New Scene', shortcut: 'Ctrl+N', action: () => store.newScene() },
@@ -61,6 +82,9 @@ export function MenuBar() {
       { separator: true },
       { label: 'Export Scene (JSON)', action: () => store.exportScene() },
       { label: 'Import Scene (JSON)', action: () => store.importScene() },
+      { separator: true },
+      { label: 'Import Word Document (.docx/.txt)', action: () => handleImportDocument('.docx,.doc,.txt') },
+      { label: 'Import PDF Document (.pdf)', action: () => handleImportDocument('.pdf,.txt') },
     ],
     Edit: [
       { label: 'Undo', shortcut: 'Ctrl+Z', action: () => store.undo() },

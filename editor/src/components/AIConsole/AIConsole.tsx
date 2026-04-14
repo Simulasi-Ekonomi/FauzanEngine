@@ -89,7 +89,7 @@ export function AIConsole() {
         <div className="ai-input-area">
           <input
             type="text"
-            placeholder="Ketik perintah... (buat rumah, buat game farmville, build, help)"
+            placeholder="Ketik: diskusi, analisa scene, ide game, monetisasi, buat rumah, help"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}

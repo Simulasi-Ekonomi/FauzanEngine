@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { EditorState, ActorType, Transform, ChatMessage, NeoActor, TransformMode, TransformSpace, ViewMode } from '../types/editor';
+import { processWithAriesBrain } from '../engine/AriesBrain';
 
 let actorCounter = 0;
 let messageCounter = 0;
@@ -166,6 +167,10 @@ const API_BASE = (() => {
 
 // Client-side AI processing (works without backend)
 function processCommandOffline(command: string, actors: Record<string, NeoActor>): { response: string; actions: Array<Record<string, unknown>> } {
+  // Try Aries Brain first (discussion, analysis, bug detection, monetization)
+  const brainResult = processWithAriesBrain(command, actors);
+  if (brainResult) return brainResult;
+
   const cmd = command.toLowerCase().trim();
 
   // Actor creation
@@ -440,55 +445,52 @@ Engine Core: C++20 (ECS + Vulkan RHI)`,
   // Help
   if (cmd.includes('help') || cmd.includes('bantu') || cmd.includes('tolong') || cmd.includes('apa yang bisa')) {
     return {
-      response: `[ARIES AI v3.5 - NeoEngine Assistant]
+      response: `[ARIES AI v3.5 - NeoEngine Autonomous Brain]
 
-PERINTAH DASAR:
-  "buat cube" / "add sphere" / "tambah cylinder" - Tambah objek
-  "buat lampu" / "buat camera" - Tambah light/camera
-  "hapus semua" - Bersihkan scene
+ARIES SOLUTIF (Diskusi & Analisa):
+  "diskusi" - Ngobrol soal game design dengan Aries
+  "analisa scene" - Scan bug, masalah, & saran perbaikan
+  "ide game" - Rekomendasi game profitable untuk target $1M
+  "monetisasi" - Strategi IAP, ads, pricing, whale management
+  "retention" - Cara bikin player balik lagi
+  "strategi whale" - Maximize big spender revenue
+  "balance" - Tips game balancing
+  "strategi launch" - Rencana rilis optimal
+  "saran" - Aries kasih saran proaktif
 
-3D MODEL GENERATOR (seperti Trellis):
-  "buat rumah" - Generate model rumah 3D
-  "buat kastil" - Generate kastil medieval
-  "buat dragon" / "buat naga" - Generate naga 3D
-  "buat knight" - Generate karakter ksatria
-  "buat mobil" - Generate mobil 3D
-  "buat pesawat" - Generate pesawat luar angkasa
-  "buat pohon" - Generate pohon
-  "buat pedang" - Generate senjata
-  "buat robot" / "buat wizard" - Generate karakter
-  "buat gunung" / "buat tank" - Dan banyak lagi!
+DOCUMENT IMPORT:
+  File > Import Word Document - Upload .docx/.txt game design
+  File > Import PDF Document - Upload .pdf game design
+  "apa isi dokumen" - Ringkasan dokumen yang di-import
+  "buat game dari dokumen" - Generate scene dari data dokumen
+
+BUAT OBJEK:
+  "buat cube" / "add sphere" / "tambah cylinder" - Objek dasar
+  "buat lampu" / "buat camera" - Light & camera
+
+3D MODEL GENERATOR:
+  "buat rumah" / "buat kastil" / "buat dragon" - Generate model 3D
+  "buat mobil" / "buat robot" / "buat pedang" - Dan banyak lagi!
 
 GAME TEMPLATES:
-  "buat game sudoku" - Puzzle game
-  "buat game farmville" - Farming simulation
-  "buat game fps" - First person shooter
-  "buat game platformer" - Side-scrolling game
-  "buat game rpg" - Role-playing game
+  "buat game sudoku" / "buat game farmville" / "buat game fps"
+  "buat game platformer" / "buat game rpg"
+  "buat game idle tycoon" / "buat game merge"
+
+MONETIZATION:
+  Tools > Monetization Manager - IAP, ads, analytics, segments
+  "monetisasi" / "harga" / "iap" - Buka via chat
 
 BUILD & PUBLISH:
-  "build" / "buat apk" - Build game untuk Android/iOS/Web
-  "upload play store" - Publish ke Google Play Store
-  "deploy" - Deploy game ke web
+  "build" / "buat apk" / "upload play store" / "deploy"
 
 PLAY MODE:
   "play game" / "jalankan game" - Test game di browser
 
 SCENE:
-  "buat scene" / "buat level" - Buat scene dasar
-  "status" - Info engine dan scene
+  "buat scene" / "status" / "hapus semua"
 
-TOOLS:
-  "/template" - Game template generator
-  "/assets" - Asset generator
-
-KEYBOARD SHORTCUTS:
-  W/E/R - Translate/Rotate/Scale
-  Ctrl+Z/Y - Undo/Redo
-  Ctrl+S - Save Scene
-  Ctrl+N - New Scene
-  Ctrl+D - Duplicate
-  Del - Delete selected`,
+KEYBOARD: W/E/R (tools), Ctrl+Z/Y (undo/redo), Ctrl+S (save)`,
       actions: [],
     };
   }
@@ -528,21 +530,32 @@ KEYBOARD SHORTCUTS:
     };
   }
 
-  // Default - try to be helpful
+  // Default - Aries solutif: try to understand and help
+  const actorCount = Object.keys(actors).length;
+  const hasGameActors = Object.values(actors).some(a =>
+    a.name.includes('Farm') || a.name.includes('Cell') || a.name.includes('Arena') ||
+    a.name.includes('Platform') || a.name.includes('Village') || a.name.includes('Generator')
+  );
+
+  let proactiveSuggestion = '';
+  if (actorCount <= 4) {
+    proactiveSuggestion = `\n\n💡 Scene kamu masih kosong. Saya sarankan mulai dengan:\n- "buat game farmville" → langsung buat farming game\n- "ide game" → saya kasih rekomendasi game profitable\n- "diskusi" → kita ngobrol soal game design kamu`;
+  } else if (hasGameActors) {
+    proactiveSuggestion = `\n\n💡 Saya lihat kamu sudah punya game objects. Coba:\n- "analisa scene" → saya cek bug dan masalah\n- "play game" → test game kamu\n- "monetisasi" → saya bantu strategi revenue`;
+  } else {
+    proactiveSuggestion = `\n\n💡 Scene punya ${actorCount} actors. Saran:\n- "analisa scene" → cek bug\n- "buat game farmville" → convert ke game template\n- "diskusi" → kita ngobrol soal proyek kamu`;
+  }
+
   return {
-    response: `Perintah diterima: "${command}"
+    response: `Saya mengerti kamu bilang: "${command}"
 
-Saya Aries AI, bisa bantu kamu buat game! Coba perintah:
-- "buat cube" / "add sphere" - Tambah objek 3D dasar
-- "buat rumah" / "buat dragon" / "buat mobil" - Generate model 3D
-- "buat game farmville" - Template farming game
-- "buat game sudoku" - Template puzzle game
-- "buat scene" - Buat level dasar
-- "build" / "upload play store" - Build & publish game
-- "play game" - Test game di play mode
-- "help" - Lihat semua perintah
-
-Untuk AI penuh dengan generate code & level detail, jalankan backend dengan API key.`,
+Saya Aries, AI autonomous NeoEngine. Saya BUKAN chatbot biasa - saya bisa:
+🔍 Analisa scene & deteksi bug otomatis
+💰 Kasih strategi monetisasi untuk target $1M
+🎮 Diskusi game design (balancing, retention, launch)
+🏗️ Generate game templates & 3D models
+📄 Baca dokumen Word/PDF game design kamu
+${proactiveSuggestion}`,
     actions: [],
   };
 }
@@ -572,7 +585,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     {
       id: 'msg_welcome_2',
       role: 'assistant',
-      content: 'Halo! Saya Aries, AI assistant untuk NeoEngine. Saya bisa bantu kamu:\n\n- Membuat dan memodifikasi actors di scene\n- Generate game templates (Sudoku, Farmville, FPS, RPG, Platformer)\n- Manage scene (save/load/export)\n- Generate code dan assets\n\nKetik "help" untuk lihat semua perintah, atau langsung ketik apa yang kamu mau!',
+      content: 'Halo! Saya Aries, AI Autonomous NeoEngine. Saya punya otak sendiri - TIDAK perlu API key!\n\nSaya bisa:\n🔍 Analisa scene & deteksi bug otomatis → ketik "analisa scene"\n💰 Diskusi monetisasi & strategi $1M → ketik "monetisasi"\n🎮 Diskusi game design → ketik "diskusi"\n💡 Kasih saran proaktif → ketik "saran"\n📄 Baca dokumen game design → File > Import Word/PDF\n🏗️ Buat game template & 3D models → ketik "buat game farmville"\n\nKetik "help" untuk semua perintah, atau langsung tanya apa saja!',
       timestamp: Date.now(),
     },
   ],
