@@ -71,6 +71,8 @@ export function MenuBar() {
       { separator: true },
       { label: 'Select All', shortcut: 'Ctrl+A', action: () => store.selectAll() },
       { label: 'Deselect All', action: () => store.selectActor(null) },
+      { separator: true },
+      { label: 'Settings...', action: () => (window as any).__neoOpenSettings?.() },
     ],
     Window: [
       { label: 'Reset Layout', action: () => { /* layout reset */ } },

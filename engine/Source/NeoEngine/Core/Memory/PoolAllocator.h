@@ -1,11 +1,12 @@
 #pragma once
-#include <vector>
 #include <cstddef>
+#include <memory>
+#include <vector>
 
 class PoolAllocator {
 public:
     PoolAllocator(size_t blockSize, size_t blockCount);
-    ~PoolAllocator();
+    ~PoolAllocator() = default;
     
     void* Allocate();
     void Free(void* ptr);
@@ -13,5 +14,6 @@ public:
 private:
     size_t BlockSize;
     std::vector<void*> FreeList;
-    std::vector<void*> RawBlocks; // Untuk tracking pembersihan
+    // Smart pointer manages the raw memory blocks
+    std::vector<std::unique_ptr<char[]>> OwnedBlocks;
 };

@@ -8,5 +8,5 @@ uint64 PlatformTime::NowNano() {
 }
 
 double PlatformTime::NowSeconds() {
-    return (double)GPlatform->GetTimeNano() * 1e-9;
+    return static_cast<double>(GPlatform->GetTimeNano()) * 1e-9;
 }

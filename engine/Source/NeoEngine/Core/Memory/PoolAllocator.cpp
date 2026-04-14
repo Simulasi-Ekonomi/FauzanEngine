@@ -1,17 +1,12 @@
 #include "PoolAllocator.h"
-#include <cstdlib>
 
 PoolAllocator::PoolAllocator(size_t blockSize, size_t blockCount) : BlockSize(blockSize) {
+    OwnedBlocks.reserve(blockCount);
+    FreeList.reserve(blockCount);
     for (size_t i = 0; i < blockCount; ++i) {
-        void* ptr = std::malloc(blockSize);
-        FreeList.push_back(ptr);
-        RawBlocks.push_back(ptr);
-    }
-}
-
-PoolAllocator::~PoolAllocator() {
-    for (void* ptr : RawBlocks) {
-        if (ptr) std::free(ptr);
+        auto block = std::make_unique<char[]>(blockSize);
+        FreeList.push_back(block.get());
+        OwnedBlocks.push_back(std::move(block));
     }
 }
 

@@ -10,6 +10,7 @@ import { AIConsole } from './components/AIConsole/AIConsole';
 import { StatusBar } from './components/StatusBar/StatusBar';
 import { BuildPublishDialog } from './components/BuildPublish/BuildPublishDialog';
 import { ModelGeneratorDialog, generateModelFromPrompt } from './components/BuildPublish/ModelGenerator';
+import { SettingsDialog } from './components/Settings/SettingsDialog';
 import type { GeneratedModel } from './components/BuildPublish/ModelGenerator';
 import { GameRuntime, GAME_TEMPLATES } from './engine/GameRuntime';
 import type { UIElement, GameScript } from './engine/GameRuntime';
@@ -18,6 +19,7 @@ import { useEditorStore } from './stores/editorStore';
 export function App() {
   const [buildDialogOpen, setBuildDialogOpen] = useState(false);
   const [modelGenOpen, setModelGenOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [gameUIElements, setGameUIElements] = useState<UIElement[]>([]);
   const [gameRuntime, setGameRuntime] = useState<GameRuntime | null>(null);
 
@@ -122,6 +124,7 @@ export function App() {
   (window as any).__neoHandleSpecialCommand = handleAISpecialCommand;
   (window as any).__neoOpenBuildDialog = () => setBuildDialogOpen(true);
   (window as any).__neoOpenModelGen = () => setModelGenOpen(true);
+  (window as any).__neoOpenSettings = () => setSettingsOpen(true);
   (window as any).__neoStartPlayMode = startPlayMode;
   (window as any).__neoStopPlayMode = stopPlayMode;
 
@@ -263,6 +266,10 @@ export function App() {
         onClose={() => setModelGenOpen(false)}
         onGenerate={handleModelGenerate}
         onLog={(msg) => addSystemMessage(msg)}
+      />
+      <SettingsDialog
+        isOpen={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
       />
     </div>
   );

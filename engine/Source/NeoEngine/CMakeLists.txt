@@ -38,6 +38,7 @@ file(GLOB_RECURSE NEO_CORE_SRC
     "Serializer/*.cpp"
     "Threading/*.cpp"
     "Viewport/*.cpp"
+    "Autonomous/*.cpp"
 )
 
 add_library(neo_core SHARED ${NEO_CORE_SRC})
@@ -78,6 +79,7 @@ target_include_directories(neo_core PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/Serializer
     ${CMAKE_CURRENT_SOURCE_DIR}/Threading
     ${CMAKE_CURRENT_SOURCE_DIR}/Viewport
+    ${CMAKE_CURRENT_SOURCE_DIR}/Autonomous
 )
 
 # Platform-specific linking
