@@ -1,8 +1,8 @@
 // =========================================================
-// Aries Autonomous Brain - Built-in AI Engine
+// Aries Autonomous Brain v4.0 - Self-Learning AI Engine
 // Works WITHOUT any external API key
-// Provides: Scene Analysis, Bug Detection, Game Design Discussion,
-// Monetization Advice, Initiative-based Suggestions
+// Features: Scene Creation, Learning Memory, Conversation,
+// Bug Detection, Game Design, Monetization, Initiative
 // =========================================================
 
 import type { NeoActor } from '../types/editor';
@@ -13,7 +13,90 @@ interface BrainResponse {
 }
 
 // =========================================================
-// Scene Analysis Engine
+// LEARNING MEMORY SYSTEM
+// Aries remembers everything and gets smarter over time
+// =========================================================
+
+interface AriesMemory {
+  interactions: number;
+  learnedPatterns: Record<string, string>; // user pattern -> action
+  corrections: Array<{ wrong: string; right: string }>;
+  favoriteCommands: Record<string, number>; // command -> usage count
+  knowledge: string[]; // learned facts
+  conversationHistory: Array<{ role: string; content: string; timestamp: number }>;
+  xp: number; // experience points
+  level: number;
+  lastActive: number;
+}
+
+const MEMORY_KEY = 'aries_brain_memory';
+
+function loadMemory(): AriesMemory {
+  try {
+    const saved = localStorage.getItem(MEMORY_KEY);
+    if (saved) return JSON.parse(saved);
+  } catch { /* ignore */ }
+  return {
+    interactions: 0,
+    learnedPatterns: {},
+    corrections: [],
+    favoriteCommands: {},
+    knowledge: [],
+    conversationHistory: [],
+    xp: 0,
+    level: 1,
+    lastActive: Date.now(),
+  };
+}
+
+function saveMemory(memory: AriesMemory) {
+  try {
+    localStorage.setItem(MEMORY_KEY, JSON.stringify(memory));
+  } catch { /* ignore */ }
+}
+
+function addInteraction(command: string, response: string) {
+  const memory = loadMemory();
+  memory.interactions++;
+  memory.xp += 10;
+  memory.level = Math.floor(memory.xp / 100) + 1;
+  memory.lastActive = Date.now();
+
+  // Track favorite commands
+  const cmdKey = command.toLowerCase().split(' ').slice(0, 3).join(' ');
+  memory.favoriteCommands[cmdKey] = (memory.favoriteCommands[cmdKey] || 0) + 1;
+
+  // Store conversation (keep last 100)
+  memory.conversationHistory.push({ role: 'user', content: command, timestamp: Date.now() });
+  memory.conversationHistory.push({ role: 'aries', content: response.substring(0, 200), timestamp: Date.now() });
+  if (memory.conversationHistory.length > 200) {
+    memory.conversationHistory = memory.conversationHistory.slice(-200);
+  }
+
+  saveMemory(memory);
+}
+
+function learnCorrection(wrong: string, right: string) {
+  const memory = loadMemory();
+  memory.corrections.push({ wrong, right });
+  memory.learnedPatterns[wrong.toLowerCase()] = right;
+  memory.xp += 25; // bonus XP for learning
+  memory.level = Math.floor(memory.xp / 100) + 1;
+  saveMemory(memory);
+}
+
+function addKnowledge(fact: string) {
+  const memory = loadMemory();
+  if (!memory.knowledge.includes(fact)) {
+    memory.knowledge.push(fact);
+    memory.xp += 15;
+    memory.level = Math.floor(memory.xp / 100) + 1;
+    saveMemory(memory);
+  }
+}
+
+// =========================================================
+// SCENE ANALYSIS ENGINE
 // =========================================================
 
 interface SceneIssue {
@@ -28,439 +111,610 @@ function analyzeScene(actors: Record<string, NeoActor>): SceneIssue[] {
   const actorList = Object.values(actors);
   const actorCount = actorList.length;
 
-  // Check for missing essentials
   const hasLight = actorList.some(a => a.type.includes('light'));
   const hasCamera = actorList.some(a => a.type === 'camera');
   const hasPlayerStart = actorList.some(a => a.type === 'player_start');
   const hasFloor = actorList.some(a => a.type === 'plane');
 
   if (!hasLight) {
-    issues.push({
-      severity: 'error', category: 'Lighting',
-      message: 'Scene tidak punya light source! Game akan gelap total.',
-      suggestion: 'Tambahkan DirectionalLight untuk matahari atau PointLight untuk indoor.',
-    });
+    issues.push({ severity: 'error', category: 'Lighting', message: 'Tidak ada light! Game gelap.', suggestion: 'Saya tambahkan light otomatis.' });
   }
-
   if (!hasCamera) {
-    issues.push({
-      severity: 'warning', category: 'Camera',
-      message: 'Scene tidak punya camera actor.',
-      suggestion: 'Tambahkan CameraActor untuk mengontrol pandangan player.',
-    });
+    issues.push({ severity: 'warning', category: 'Camera', message: 'Tidak ada camera.', suggestion: 'Tambahkan camera untuk pandangan player.' });
   }
-
   if (!hasPlayerStart) {
-    issues.push({
-      severity: 'warning', category: 'Gameplay',
-      message: 'Scene tidak punya PlayerStart.',
-      suggestion: 'Tambahkan PlayerStart untuk spawn point player. Tanpa ini, player tidak tahu mulai dari mana.',
-    });
+    issues.push({ severity: 'warning', category: 'Gameplay', message: 'Tidak ada PlayerStart.', suggestion: 'Tambahkan spawn point.' });
   }
-
   if (!hasFloor) {
-    issues.push({
-      severity: 'warning', category: 'Level Design',
-      message: 'Scene tidak punya ground plane.',
-      suggestion: 'Tambahkan Plane sebagai lantai/tanah supaya objek tidak jatuh ke void.',
-    });
+    issues.push({ severity: 'warning', category: 'Level', message: 'Tidak ada ground/floor.', suggestion: 'Tambahkan plane sebagai lantai.' });
   }
 
-  // Check for duplicate PlayerStarts
   const playerStarts = actorList.filter(a => a.type === 'player_start');
   if (playerStarts.length > 1) {
-    issues.push({
-      severity: 'warning', category: 'Gameplay',
-      message: `Ada ${playerStarts.length} PlayerStart! Hanya satu yang akan digunakan.`,
-      suggestion: 'Hapus PlayerStart duplikat. Game hanya butuh satu spawn point utama (kecuali multiplayer).',
-    });
+    issues.push({ severity: 'warning', category: 'Gameplay', message: `${playerStarts.length} PlayerStart duplikat.`, suggestion: 'Hapus yang tidak perlu.' });
   }
 
-  // Check for actors at same position (overlapping)
-  for (let i = 0; i < actorList.length; i++) {
-    for (let j = i + 1; j < actorList.length; j++) {
-      const a = actorList[i];
-      const b = actorList[j];
-      if (a.transform.position.x === b.transform.position.x &&
-          a.transform.position.y === b.transform.position.y &&
-          a.transform.position.z === b.transform.position.z) {
-        issues.push({
-          severity: 'warning', category: 'Collision',
-          message: `"${a.name}" dan "${b.name}" ada di posisi yang sama (${a.transform.position.x}, ${a.transform.position.y}, ${a.transform.position.z}).`,
-          suggestion: 'Pindahkan salah satu actor supaya tidak overlapping.',
-        });
-      }
-    }
-  }
-
-  // Performance warnings
   if (actorCount > 100) {
-    issues.push({
-      severity: 'warning', category: 'Performance',
-      message: `Scene punya ${actorCount} actors. Ini bisa berat untuk mobile.`,
-      suggestion: 'Pertimbangkan LOD (Level of Detail) dan occlusion culling. Untuk mobile, usahakan < 50 actors.',
-    });
+    issues.push({ severity: 'warning', category: 'Performance', message: `${actorCount} actors, berat untuk mobile.`, suggestion: 'Kurangi atau gunakan LOD.' });
   }
 
   const lightCount = actorList.filter(a => a.type.includes('light')).length;
   if (lightCount > 5) {
-    issues.push({
-      severity: 'warning', category: 'Performance',
-      message: `${lightCount} dynamic lights! Ini sangat berat untuk rendering.`,
-      suggestion: 'Kurangi jumlah light atau gunakan baked lighting. Mobile ideal: max 2-3 lights.',
-    });
+    issues.push({ severity: 'warning', category: 'Performance', message: `${lightCount} lights, sangat berat.`, suggestion: 'Max 2-3 lights untuk mobile.' });
   }
 
-  // Check for zero scale (invisible objects)
-  const zeroScale = actorList.filter(a =>
-    a.transform.scale.x === 0 || a.transform.scale.y === 0 || a.transform.scale.z === 0
-  );
+  const zeroScale = actorList.filter(a => a.transform.scale.x === 0 || a.transform.scale.y === 0 || a.transform.scale.z === 0);
   if (zeroScale.length > 0) {
-    issues.push({
-      severity: 'error', category: 'Transform',
-      message: `${zeroScale.length} actor(s) punya scale 0: ${zeroScale.map(a => a.name).join(', ')}`,
-      suggestion: 'Actor dengan scale 0 tidak akan terlihat. Set minimal ke 0.01.',
-    });
+    issues.push({ severity: 'error', category: 'Transform', message: `${zeroScale.map(a => a.name).join(', ')} scale 0 (invisible).`, suggestion: 'Set scale minimal 0.01.' });
   }
 
-  // Good scene feedback
   if (issues.length === 0) {
-    issues.push({
-      severity: 'info', category: 'Quality',
-      message: 'Scene looks good! Tidak ada masalah terdeteksi.',
-      suggestion: 'Scene siap untuk di-build dan di-test.',
-    });
+    issues.push({ severity: 'info', category: 'OK', message: 'Scene bagus! Siap di-build.', suggestion: 'Coba "play game" untuk test.' });
   }
 
   return issues;
 }
 
 // =========================================================
-// Game Design Discussion Engine
+// LANDSCAPE & ENVIRONMENT CREATORS
+// These actually CREATE objects in the scene
 // =========================================================
 
-interface GameDesignTopic {
-  keywords: string[];
-  response: string;
+function createLandscapeMap(): BrainResponse {
+  return {
+    response: `[ARIES] Landscape map dibuat!
+
+Saya sudah membuat landscape dengan:
+- Terrain (ground plane besar)
+- 4 Gunung/Bukit
+- 6 Pohon
+- 2 Danau/Air
+- Sungai
+- Pencahayaan matahari
+- Camera overview
+- Player spawn point
+
+Total: 18 actors. Klik di Outliner untuk edit posisi masing-masing.
+Ketik "tambah pohon" / "tambah gunung" untuk menambah lebih banyak.`,
+    actions: [
+      { type: 'add_actor', actorType: 'plane', name: 'Terrain_Ground' },
+      { type: 'add_actor', actorType: 'cube', name: 'Mountain_1' },
+      { type: 'add_actor', actorType: 'cube', name: 'Mountain_2' },
+      { type: 'add_actor', actorType: 'cube', name: 'Mountain_3' },
+      { type: 'add_actor', actorType: 'cube', name: 'Hill_1' },
+      { type: 'add_actor', actorType: 'cylinder', name: 'Tree_Pine_1' },
+      { type: 'add_actor', actorType: 'cylinder', name: 'Tree_Pine_2' },
+      { type: 'add_actor', actorType: 'cylinder', name: 'Tree_Oak_1' },
+      { type: 'add_actor', actorType: 'cylinder', name: 'Tree_Oak_2' },
+      { type: 'add_actor', actorType: 'cylinder', name: 'Tree_Birch_1' },
+      { type: 'add_actor', actorType: 'cylinder', name: 'Tree_Birch_2' },
+      { type: 'add_actor', actorType: 'plane', name: 'Lake_1' },
+      { type: 'add_actor', actorType: 'plane', name: 'Lake_2' },
+      { type: 'add_actor', actorType: 'plane', name: 'River' },
+      { type: 'add_actor', actorType: 'sphere', name: 'Rock_1' },
+      { type: 'add_actor', actorType: 'sphere', name: 'Rock_2' },
+      { type: 'add_actor', actorType: 'light_directional', name: 'Sun' },
+      { type: 'add_actor', actorType: 'camera', name: 'OverviewCamera' },
+      { type: 'add_actor', actorType: 'player_start', name: 'PlayerSpawn' },
+    ],
+  };
 }
 
-const GAME_DESIGN_TOPICS: GameDesignTopic[] = [
+function createCity(): BrainResponse {
+  return {
+    response: `[ARIES] Kota dibuat!
+
+Kota lengkap dengan:
+- Ground/jalan utama
+- 8 Gedung berbagai ukuran
+- 2 Toko
+- Taman kota dengan pohon
+- Lampu jalan
+- Parkiran
+- Camera kota
+- Player spawn
+
+Total: 20 actors. Edit di Outliner untuk atur posisi.`,
+    actions: [
+      { type: 'add_actor', actorType: 'plane', name: 'City_Ground' },
+      { type: 'add_actor', actorType: 'plane', name: 'MainRoad' },
+      { type: 'add_actor', actorType: 'cube', name: 'Building_Tall_1' },
+      { type: 'add_actor', actorType: 'cube', name: 'Building_Tall_2' },
+      { type: 'add_actor', actorType: 'cube', name: 'Building_Tall_3' },
+      { type: 'add_actor', actorType: 'cube', name: 'Building_Medium_1' },
+      { type: 'add_actor', actorType: 'cube', name: 'Building_Medium_2' },
+      { type: 'add_actor', actorType: 'cube', name: 'Building_Small_1' },
+      { type: 'add_actor', actorType: 'cube', name: 'Building_Small_2' },
+      { type: 'add_actor', actorType: 'cube', name: 'Building_Small_3' },
+      { type: 'add_actor', actorType: 'cube', name: 'Shop_1' },
+      { type: 'add_actor', actorType: 'cube', name: 'Shop_2' },
+      { type: 'add_actor', actorType: 'plane', name: 'Park' },
+      { type: 'add_actor', actorType: 'cylinder', name: 'Park_Tree_1' },
+      { type: 'add_actor', actorType: 'cylinder', name: 'Park_Tree_2' },
+      { type: 'add_actor', actorType: 'light_point', name: 'StreetLight_1' },
+      { type: 'add_actor', actorType: 'light_point', name: 'StreetLight_2' },
+      { type: 'add_actor', actorType: 'plane', name: 'Parking' },
+      { type: 'add_actor', actorType: 'light_directional', name: 'Sun' },
+      { type: 'add_actor', actorType: 'camera', name: 'CityCamera' },
+      { type: 'add_actor', actorType: 'player_start', name: 'PlayerSpawn' },
+    ],
+  };
+}
+
+function createVillage(): BrainResponse {
+  return {
+    response: `[ARIES] Desa dibuat!
+
+Desa tradisional dengan:
+- Tanah desa
+- 5 Rumah penduduk
+- 1 Balai desa
+- Sumur
+- Ladang pertanian
+- Pohon-pohon
+- Jalan setapak
+- Sungai kecil
+
+Total: 18 actors.`,
+    actions: [
+      { type: 'add_actor', actorType: 'plane', name: 'Village_Ground' },
+      { type: 'add_actor', actorType: 'cube', name: 'House_1' },
+      { type: 'add_actor', actorType: 'cube', name: 'House_2' },
+      { type: 'add_actor', actorType: 'cube', name: 'House_3' },
+      { type: 'add_actor', actorType: 'cube', name: 'House_4' },
+      { type: 'add_actor', actorType: 'cube', name: 'House_5' },
+      { type: 'add_actor', actorType: 'cube', name: 'VillageHall' },
+      { type: 'add_actor', actorType: 'cylinder', name: 'Well' },
+      { type: 'add_actor', actorType: 'plane', name: 'FarmField_1' },
+      { type: 'add_actor', actorType: 'plane', name: 'FarmField_2' },
+      { type: 'add_actor', actorType: 'cylinder', name: 'Tree_1' },
+      { type: 'add_actor', actorType: 'cylinder', name: 'Tree_2' },
+      { type: 'add_actor', actorType: 'cylinder', name: 'Tree_3' },
+      { type: 'add_actor', actorType: 'plane', name: 'DirtPath' },
+      { type: 'add_actor', actorType: 'plane', name: 'Stream' },
+      { type: 'add_actor', actorType: 'light_directional', name: 'Sun' },
+      { type: 'add_actor', actorType: 'camera', name: 'VillageCamera' },
+      { type: 'add_actor', actorType: 'player_start', name: 'PlayerSpawn' },
+    ],
+  };
+}
+
+function createDungeon(): BrainResponse {
+  return {
+    response: `[ARIES] Dungeon dibuat!
+
+Dungeon gelap dengan:
+- Floor dungeon
+- 8 Dinding (membentuk koridor dan ruangan)
+- 3 Ruangan (entrance, treasure, boss)
+- Pintu masuk
+- Treasure chest
+- Boss arena
+- Torch lights
+- Traps
+
+Total: 20 actors.`,
+    actions: [
+      { type: 'add_actor', actorType: 'plane', name: 'Dungeon_Floor' },
+      { type: 'add_actor', actorType: 'cube', name: 'Wall_North' },
+      { type: 'add_actor', actorType: 'cube', name: 'Wall_South' },
+      { type: 'add_actor', actorType: 'cube', name: 'Wall_East' },
+      { type: 'add_actor', actorType: 'cube', name: 'Wall_West' },
+      { type: 'add_actor', actorType: 'cube', name: 'Wall_Inner_1' },
+      { type: 'add_actor', actorType: 'cube', name: 'Wall_Inner_2' },
+      { type: 'add_actor', actorType: 'cube', name: 'Wall_Inner_3' },
+      { type: 'add_actor', actorType: 'cube', name: 'Wall_Inner_4' },
+      { type: 'add_actor', actorType: 'cube', name: 'DungeonGate' },
+      { type: 'add_actor', actorType: 'cube', name: 'TreasureRoom' },
+      { type: 'add_actor', actorType: 'sphere', name: 'TreasureChest' },
+      { type: 'add_actor', actorType: 'plane', name: 'BossArena' },
+      { type: 'add_actor', actorType: 'cube', name: 'BossThrone' },
+      { type: 'add_actor', actorType: 'sphere', name: 'Trap_Spike_1' },
+      { type: 'add_actor', actorType: 'sphere', name: 'Trap_Spike_2' },
+      { type: 'add_actor', actorType: 'light_point', name: 'Torch_1' },
+      { type: 'add_actor', actorType: 'light_point', name: 'Torch_2' },
+      { type: 'add_actor', actorType: 'light_point', name: 'Torch_3' },
+      { type: 'add_actor', actorType: 'camera', name: 'DungeonCamera' },
+      { type: 'add_actor', actorType: 'player_start', name: 'DungeonEntrance' },
+    ],
+  };
+}
+
+function createForest(): BrainResponse {
+  return {
+    response: `[ARIES] Hutan dibuat!
+
+Hutan lebat dengan:
+- Ground hutan
+- 12 Pohon berbagai jenis
+- Semak-semak
+- Batu-batu
+- Jalan setapak
+- Sungai kecil
+- Pencahayaan filtered
+
+Total: 22 actors.`,
+    actions: [
+      { type: 'add_actor', actorType: 'plane', name: 'Forest_Ground' },
+      { type: 'add_actor', actorType: 'cylinder', name: 'Tree_Tall_1' },
+      { type: 'add_actor', actorType: 'cylinder', name: 'Tree_Tall_2' },
+      { type: 'add_actor', actorType: 'cylinder', name: 'Tree_Tall_3' },
+      { type: 'add_actor', actorType: 'cylinder', name: 'Tree_Tall_4' },
+      { type: 'add_actor', actorType: 'cylinder', name: 'Tree_Medium_1' },
+      { type: 'add_actor', actorType: 'cylinder', name: 'Tree_Medium_2' },
+      { type: 'add_actor', actorType: 'cylinder', name: 'Tree_Medium_3' },
+      { type: 'add_actor', actorType: 'cylinder', name: 'Tree_Small_1' },
+      { type: 'add_actor', actorType: 'cylinder', name: 'Tree_Small_2' },
+      { type: 'add_actor', actorType: 'cylinder', name: 'Tree_Small_3' },
+      { type: 'add_actor', actorType: 'cylinder', name: 'Tree_Small_4' },
+      { type: 'add_actor', actorType: 'cylinder', name: 'Tree_Small_5' },
+      { type: 'add_actor', actorType: 'sphere', name: 'Bush_1' },
+      { type: 'add_actor', actorType: 'sphere', name: 'Bush_2' },
+      { type: 'add_actor', actorType: 'sphere', name: 'Bush_3' },
+      { type: 'add_actor', actorType: 'sphere', name: 'Rock_1' },
+      { type: 'add_actor', actorType: 'sphere', name: 'Rock_2' },
+      { type: 'add_actor', actorType: 'plane', name: 'ForestPath' },
+      { type: 'add_actor', actorType: 'plane', name: 'Creek' },
+      { type: 'add_actor', actorType: 'light_directional', name: 'FilteredSunlight' },
+      { type: 'add_actor', actorType: 'camera', name: 'ForestCamera' },
+      { type: 'add_actor', actorType: 'player_start', name: 'ForestEntrance' },
+    ],
+  };
+}
+
+function createDesert(): BrainResponse {
+  return {
+    response: `[ARIES] Gurun dibuat!
+
+Gurun pasir dengan:
+- Terrain pasir luas
+- Bukit pasir (sand dunes)
+- Oasis dengan air
+- Piramida / reruntuhan
+- Kaktus
+- Batu gurun
+- Matahari terik
+
+Total: 16 actors.`,
+    actions: [
+      { type: 'add_actor', actorType: 'plane', name: 'Desert_Sand' },
+      { type: 'add_actor', actorType: 'cube', name: 'SandDune_1' },
+      { type: 'add_actor', actorType: 'cube', name: 'SandDune_2' },
+      { type: 'add_actor', actorType: 'cube', name: 'SandDune_3' },
+      { type: 'add_actor', actorType: 'plane', name: 'Oasis_Water' },
+      { type: 'add_actor', actorType: 'cylinder', name: 'Oasis_Palm_1' },
+      { type: 'add_actor', actorType: 'cylinder', name: 'Oasis_Palm_2' },
+      { type: 'add_actor', actorType: 'cube', name: 'Pyramid' },
+      { type: 'add_actor', actorType: 'cube', name: 'AncientRuins' },
+      { type: 'add_actor', actorType: 'cylinder', name: 'Cactus_1' },
+      { type: 'add_actor', actorType: 'cylinder', name: 'Cactus_2' },
+      { type: 'add_actor', actorType: 'cylinder', name: 'Cactus_3' },
+      { type: 'add_actor', actorType: 'sphere', name: 'DesertRock_1' },
+      { type: 'add_actor', actorType: 'sphere', name: 'DesertRock_2' },
+      { type: 'add_actor', actorType: 'light_directional', name: 'HarshSun' },
+      { type: 'add_actor', actorType: 'camera', name: 'DesertCamera' },
+      { type: 'add_actor', actorType: 'player_start', name: 'DesertSpawn' },
+    ],
+  };
+}
+
+function createBeach(): BrainResponse {
+  return {
+    response: `[ARIES] Pantai dibuat!
+
+Pantai tropis dengan:
+- Pasir pantai
+- Laut
+- Pohon kelapa
+- Batu karang
+- Perahu
+- Menara penjaga
+- Payung pantai
+
+Total: 16 actors.`,
+    actions: [
+      { type: 'add_actor', actorType: 'plane', name: 'Beach_Sand' },
+      { type: 'add_actor', actorType: 'plane', name: 'Ocean' },
+      { type: 'add_actor', actorType: 'cylinder', name: 'PalmTree_1' },
+      { type: 'add_actor', actorType: 'cylinder', name: 'PalmTree_2' },
+      { type: 'add_actor', actorType: 'cylinder', name: 'PalmTree_3' },
+      { type: 'add_actor', actorType: 'sphere', name: 'CoralRock_1' },
+      { type: 'add_actor', actorType: 'sphere', name: 'CoralRock_2' },
+      { type: 'add_actor', actorType: 'cube', name: 'Boat' },
+      { type: 'add_actor', actorType: 'cube', name: 'LifeguardTower' },
+      { type: 'add_actor', actorType: 'cylinder', name: 'BeachUmbrella_1' },
+      { type: 'add_actor', actorType: 'cylinder', name: 'BeachUmbrella_2' },
+      { type: 'add_actor', actorType: 'cube', name: 'BeachHut' },
+      { type: 'add_actor', actorType: 'sphere', name: 'Seashell_1' },
+      { type: 'add_actor', actorType: 'light_directional', name: 'TropicalSun' },
+      { type: 'add_actor', actorType: 'camera', name: 'BeachCamera' },
+      { type: 'add_actor', actorType: 'player_start', name: 'BeachSpawn' },
+    ],
+  };
+}
+
+function createSnowMountain(): BrainResponse {
+  return {
+    response: `[ARIES] Gunung salju dibuat!
+
+Gunung salju dengan:
+- Terrain salju
+- Gunung utama + 2 bukit
+- Pohon cemara bersalju
+- Gua es
+- Danau beku
+- Cabin/lodge
+- Jembatan kayu
+
+Total: 18 actors.`,
+    actions: [
+      { type: 'add_actor', actorType: 'plane', name: 'Snow_Ground' },
+      { type: 'add_actor', actorType: 'cube', name: 'SnowMountain_Main' },
+      { type: 'add_actor', actorType: 'cube', name: 'SnowHill_1' },
+      { type: 'add_actor', actorType: 'cube', name: 'SnowHill_2' },
+      { type: 'add_actor', actorType: 'cylinder', name: 'PineTree_Snow_1' },
+      { type: 'add_actor', actorType: 'cylinder', name: 'PineTree_Snow_2' },
+      { type: 'add_actor', actorType: 'cylinder', name: 'PineTree_Snow_3' },
+      { type: 'add_actor', actorType: 'cylinder', name: 'PineTree_Snow_4' },
+      { type: 'add_actor', actorType: 'cylinder', name: 'PineTree_Snow_5' },
+      { type: 'add_actor', actorType: 'cube', name: 'IceCave' },
+      { type: 'add_actor', actorType: 'plane', name: 'FrozenLake' },
+      { type: 'add_actor', actorType: 'cube', name: 'Cabin' },
+      { type: 'add_actor', actorType: 'cube', name: 'WoodenBridge' },
+      { type: 'add_actor', actorType: 'sphere', name: 'Snowman' },
+      { type: 'add_actor', actorType: 'sphere', name: 'IceRock_1' },
+      { type: 'add_actor', actorType: 'sphere', name: 'IceRock_2' },
+      { type: 'add_actor', actorType: 'light_directional', name: 'WinterSun' },
+      { type: 'add_actor', actorType: 'camera', name: 'MountainCamera' },
+      { type: 'add_actor', actorType: 'player_start', name: 'MountainSpawn' },
+    ],
+  };
+}
+
+function createCastle(): BrainResponse {
+  return {
+    response: `[ARIES] Kastil dibuat!
+
+Kastil medieval dengan:
+- Ground & courtyard
+- 4 Menara (towers)
+- Dinding kastil (walls)
+- Gerbang utama
+- Throne room
+- Gudang senjata
+- Parit air (moat)
+- Jembatan tarik
+
+Total: 20 actors.`,
+    actions: [
+      { type: 'add_actor', actorType: 'plane', name: 'Castle_Ground' },
+      { type: 'add_actor', actorType: 'plane', name: 'Courtyard' },
+      { type: 'add_actor', actorType: 'cylinder', name: 'Tower_NE' },
+      { type: 'add_actor', actorType: 'cylinder', name: 'Tower_NW' },
+      { type: 'add_actor', actorType: 'cylinder', name: 'Tower_SE' },
+      { type: 'add_actor', actorType: 'cylinder', name: 'Tower_SW' },
+      { type: 'add_actor', actorType: 'cube', name: 'Wall_North' },
+      { type: 'add_actor', actorType: 'cube', name: 'Wall_South' },
+      { type: 'add_actor', actorType: 'cube', name: 'Wall_East' },
+      { type: 'add_actor', actorType: 'cube', name: 'Wall_West' },
+      { type: 'add_actor', actorType: 'cube', name: 'MainGate' },
+      { type: 'add_actor', actorType: 'cube', name: 'ThroneRoom' },
+      { type: 'add_actor', actorType: 'cube', name: 'Armory' },
+      { type: 'add_actor', actorType: 'cube', name: 'Barracks' },
+      { type: 'add_actor', actorType: 'cube', name: 'Stable' },
+      { type: 'add_actor', actorType: 'plane', name: 'Moat' },
+      { type: 'add_actor', actorType: 'cube', name: 'Drawbridge' },
+      { type: 'add_actor', actorType: 'light_directional', name: 'Sun' },
+      { type: 'add_actor', actorType: 'light_point', name: 'TorchLight' },
+      { type: 'add_actor', actorType: 'camera', name: 'CastleCamera' },
+      { type: 'add_actor', actorType: 'player_start', name: 'CastleEntrance' },
+    ],
+  };
+}
+
+function createSpaceStation(): BrainResponse {
+  return {
+    response: `[ARIES] Space station dibuat!
+
+Stasiun luar angkasa dengan:
+- Main hull
+- Docking bay
+- Control room
+- Living quarters
+- Engine room
+- Solar panels
+- Airlock
+- Observatory
+
+Total: 16 actors.`,
+    actions: [
+      { type: 'add_actor', actorType: 'cube', name: 'MainHull' },
+      { type: 'add_actor', actorType: 'cube', name: 'DockingBay' },
+      { type: 'add_actor', actorType: 'cube', name: 'ControlRoom' },
+      { type: 'add_actor', actorType: 'cube', name: 'LivingQuarters' },
+      { type: 'add_actor', actorType: 'cube', name: 'EngineRoom' },
+      { type: 'add_actor', actorType: 'plane', name: 'SolarPanel_1' },
+      { type: 'add_actor', actorType: 'plane', name: 'SolarPanel_2' },
+      { type: 'add_actor', actorType: 'cylinder', name: 'ConnectorTube_1' },
+      { type: 'add_actor', actorType: 'cylinder', name: 'ConnectorTube_2' },
+      { type: 'add_actor', actorType: 'cube', name: 'Airlock' },
+      { type: 'add_actor', actorType: 'sphere', name: 'Observatory_Dome' },
+      { type: 'add_actor', actorType: 'cube', name: 'StorageModule' },
+      { type: 'add_actor', actorType: 'sphere', name: 'Antenna' },
+      { type: 'add_actor', actorType: 'light_point', name: 'StationLight_1' },
+      { type: 'add_actor', actorType: 'light_point', name: 'StationLight_2' },
+      { type: 'add_actor', actorType: 'camera', name: 'SpaceCamera' },
+      { type: 'add_actor', actorType: 'player_start', name: 'SpaceSpawn' },
+    ],
+  };
+}
+
+function createUnderwaterWorld(): BrainResponse {
+  return {
+    response: `[ARIES] Dunia bawah laut dibuat!
+
+Underwater scene dengan:
+- Dasar laut
+- Terumbu karang
+- Rumput laut
+- Gua bawah laut
+- Harta karun tenggelam
+- Kapal karam
+- Gelembung dan cahaya
+
+Total: 18 actors.`,
+    actions: [
+      { type: 'add_actor', actorType: 'plane', name: 'SeaFloor' },
+      { type: 'add_actor', actorType: 'sphere', name: 'Coral_1' },
+      { type: 'add_actor', actorType: 'sphere', name: 'Coral_2' },
+      { type: 'add_actor', actorType: 'sphere', name: 'Coral_3' },
+      { type: 'add_actor', actorType: 'cylinder', name: 'Seaweed_1' },
+      { type: 'add_actor', actorType: 'cylinder', name: 'Seaweed_2' },
+      { type: 'add_actor', actorType: 'cylinder', name: 'Seaweed_3' },
+      { type: 'add_actor', actorType: 'cylinder', name: 'Seaweed_4' },
+      { type: 'add_actor', actorType: 'cube', name: 'UnderwaterCave' },
+      { type: 'add_actor', actorType: 'sphere', name: 'TreasureChest' },
+      { type: 'add_actor', actorType: 'cube', name: 'Shipwreck_Hull' },
+      { type: 'add_actor', actorType: 'cube', name: 'Shipwreck_Mast' },
+      { type: 'add_actor', actorType: 'sphere', name: 'GiantClam' },
+      { type: 'add_actor', actorType: 'sphere', name: 'Rock_1' },
+      { type: 'add_actor', actorType: 'sphere', name: 'Rock_2' },
+      { type: 'add_actor', actorType: 'light_point', name: 'UnderwaterGlow_1' },
+      { type: 'add_actor', actorType: 'light_point', name: 'UnderwaterGlow_2' },
+      { type: 'add_actor', actorType: 'camera', name: 'UnderwaterCamera' },
+      { type: 'add_actor', actorType: 'player_start', name: 'DiverSpawn' },
+    ],
+  };
+}
+
+// =========================================================
+// CONVERSATIONAL AI ENGINE
+// Smart responses for free-form conversation
+// =========================================================
+
+interface ConversationPattern {
+  patterns: RegExp[];
+  responses: string[];
+  actions?: Array<Record<string, unknown>>;
+}
+
+const CONVERSATION_PATTERNS: ConversationPattern[] = [
   {
-    keywords: ['monetisasi', 'uang', 'revenue', 'duit', 'pendapatan', 'penghasilan', 'dollar', 'sejuta'],
-    response: `[ARIES GAME MONETIZATION ADVISOR]
-
-Strategi monetisasi untuk target $1M revenue:
-
-1. IAP (In-App Purchase) - 70% revenue
-   - Consumables: Gem/Gold packs ($0.99 - $99.99)
-   - Battle Pass: $9.99/season (renewal setiap 30-60 hari)
-   - Starter Pack: $2.99 (one-time, high conversion)
-   - VIP Subscription: $7.99/bulan
-
-2. Ads - 20% revenue
-   - Rewarded Video: Player pilih nonton = engagement tinggi
-   - Interstitial: Di antara level, MAX 1x per 3 menit
-   - JANGAN pakai banner ads (revenue rendah, UX jelek)
-
-3. Premium Content - 10% revenue
-   - DLC/Expansion packs
-   - Cosmetic skins (non-pay-to-win!)
-
-TIPS PENTING:
-- Jangan Pay-to-Win! Player akan review 1 star
-- Retention > Monetization. Player yang main lama = lebih banyak spend
-- A/B test setiap harga. Bahkan $0.99 vs $1.49 bisa beda 30% conversion
-- Segmentasi: Whale ($100+/bulan), Dolphin ($10-100), Minnow ($1-10)
-- Buka Tools > Monetization Manager untuk atur IAP & ads
-
-Mau diskusi strategi lebih detail? Ketik:
-- "strategi whale" - Cara maximize revenue dari big spenders
-- "strategi retention" - Cara bikin player balik lagi
-- "strategi launch" - Rencana launch yang optimal`
+    patterns: [/apa kabar|hai|halo|hello|hi|hey|selamat/i],
+    responses: [
+      'Halo! Saya Aries, AI NeoEngine. Mau buat apa hari ini? Saya bisa langsung buatkan landscape, kota, dungeon, atau game template!',
+      'Hey! Aries di sini. Scene kamu siap untuk diisi. Mau mulai dengan landscape map? Ketik "buat landscape" dan saya langsung buatkan!',
+      'Halo! Senang bisa bantu. Saya sudah siap buatkan apapun - landscape, kota, hutan, dungeon, game templates. Mau mulai dari mana?',
+    ],
   },
   {
-    keywords: ['whale', 'big spender', 'pemain besar'],
-    response: `[ARIES WHALE STRATEGY]
-
-Whale = top 1-2% player yang contribute 50%+ revenue.
-
-Cara maximize whale spending:
-1. Limited Edition Items - FOMO (Fear of Missing Out)
-   - "Hanya 48 jam!" / "Stok terbatas 100!"
-   - Exclusive skins yang TIDAK akan balik lagi
-
-2. High-Value Bundles ($49.99 - $99.99)
-   - "Ultimate Pack" dengan semua item langka
-   - Bonus 2x gems hanya untuk first purchase
-
-3. VIP Tiers
-   - Bronze ($10) → Silver ($50) → Gold ($100) → Diamond ($500)
-   - Setiap tier dapat perks exclusive
-
-4. Competitive Features
-   - Leaderboard rewards
-   - Tournament entry fees
-   - Guild wars dengan stake
-
-5. Social Features
-   - Gift items ke player lain
-   - Whale suka flexing ke teman
-
-PENTING: Whale butuh merasa "worth it", bukan dipaksa bayar.`
+    patterns: [/terima kasih|makasih|thanks|thank you|thx/i],
+    responses: [
+      'Sama-sama! Kalau butuh apa-apa lagi, langsung bilang ya. Saya selalu siap.',
+      'Senang bisa bantu! Mau lanjut buat sesuatu lagi?',
+      'No problem! Saya di sini terus. Mau tambah apa ke scene?',
+    ],
   },
   {
-    keywords: ['retention', 'player balik', 'churn', 'quit', 'berhenti main'],
-    response: `[ARIES RETENTION STRATEGY]
+    patterns: [/siapa kamu|kamu siapa|who are you|nama kamu/i],
+    responses: [
+      `Saya Aries, AI Autonomous untuk NeoEngine (Fauzan Engine). Saya punya otak sendiri dan belajar dari setiap interaksi kita.
 
-Retention adalah kunci revenue. Player yang main D30 = 10x lebih likely to pay.
+Level saya: ${loadMemory().level} (XP: ${loadMemory().xp})
+Total interaksi: ${loadMemory().interactions}
+Kemampuan: Buat landscape, kota, game, analisa scene, diskusi game design, strategi monetisasi.
 
-Day 1 (Target: 40%+ retention):
-- Tutorial singkat (< 2 menit)
-- Kasih reward besar di awal (dopamine hit)
-- JANGAN minta login/register dulu
-
-Day 3-7 (Target: 20%+ retention):
-- Daily login rewards (escalating)
-- Push notification: "Your crops are ready!"
-- Social features: add friends, gift items
-
-Day 14-30 (Target: 10%+ retention):
-- Events mingguan (limited time content)
-- Guild/clan system
-- Progression milestones dengan rewards
-
-Anti-Churn Tactics:
-- Detect idle players → send "We miss you!" offer (70% discount)
-- Reduce difficulty jika player fail 3x berturut-turut
-- "Come back" bonus setelah 3 hari tidak login
-
-Metrics yang harus di-track:
-- D1, D7, D30 retention rate
-- Session length & frequency
-- Churn point (di mana player quit?)
-- ARPU (Average Revenue Per User)
-- LTV (Lifetime Value)`
+Saya makin pintar setiap kali kamu pakai saya!`,
+    ],
   },
   {
-    keywords: ['launch', 'rilis', 'publish', 'release'],
-    response: `[ARIES LAUNCH STRATEGY]
+    patterns: [/bisa apa|kemampuan|ability|skill|fitur|feature/i],
+    responses: [
+      `Saya bisa LANGSUNG membuat:
 
-Timeline rilis game optimal:
+🗺️ ENVIRONMENT:
+"buat landscape" / "buat map" - Landscape lengkap (gunung, pohon, danau)
+"buat kota" / "buat city" - Kota dengan gedung & jalan
+"buat desa" / "buat village" - Desa tradisional
+"buat hutan" / "buat forest" - Hutan lebat
+"buat gurun" / "buat desert" - Gurun pasir + oasis
+"buat pantai" / "buat beach" - Pantai tropis
+"buat gunung salju" / "buat snow" - Gunung salju
+"buat kastil" / "buat castle" - Kastil medieval
+"buat dungeon" - Dungeon gelap
+"buat space station" - Stasiun luar angkasa
+"buat bawah laut" / "buat underwater" - Dunia bawah laut
 
-Pre-Launch (2-4 minggu sebelum):
-1. Soft launch di 2-3 negara kecil (Filipina, Thailand, Kanada)
-2. Collect data: retention, monetization, crash rate
-3. Fix bugs & tune balance
-4. Build email/social following
+🎮 GAME:
+"buat game farmville" / "buat game fps" / "buat game rpg"
+"buat game platformer" / "buat game sudoku"
+"buat game idle tycoon" / "buat game merge"
 
-Launch Week:
-1. Submit ke store 1 minggu sebelum target date
-2. Prepare press kit & trailer
-3. Contact game reviewers/YouTubers
-4. Set up App Store Optimization (ASO):
-   - Keywords yang relevan
-   - Screenshots yang eye-catching
-   - Video preview 30 detik
+🔍 ANALISA:
+"analisa scene" - Cari bug otomatis
+"monetisasi" / "retention" / "balance"
 
-Post-Launch (minggu 1-4):
-1. Monitor reviews & respond ke negative ones
-2. Release patch cepat untuk critical bugs
-3. First event/content update di week 2
-4. Analyze data → adjust monetization
+📄 IMPORT:
+File > Import Word/PDF
 
-Marketing Budget (minimum):
-- $500-2000 untuk User Acquisition (Facebook/Google Ads)
-- Target CPI (Cost Per Install): $0.50-2.00
-- ROI target: LTV > 3x CPI
-
-Buka Build > Upload to Play Store untuk mulai proses publish!`
+Ketik apapun dan saya LANGSUNG buat!`,
+    ],
   },
   {
-    keywords: ['balance', 'seimbang', 'terlalu mudah', 'terlalu susah', 'difficulty'],
-    response: `[ARIES GAME BALANCE ADVISOR]
-
-Prinsip balancing game:
-
-1. Dynamic Difficulty Adjustment (DDA):
-   - Player gagal 3x → kurangi difficulty 10%
-   - Player menang terus → naikkan difficulty 5%
-   - JANGAN bilang ke player bahwa difficulty berubah
-
-2. Economy Balance:
-   - Earn rate vs Spend rate harus 1:1.5
-   - Player harus bisa progress tanpa bayar (tapi lambat)
-   - Premium currency: gratis 50-100/hari dari gameplay
-   - Cheapest IAP harus = 3-5 hari farming
-
-3. Combat/Gameplay Balance:
-   - Semua unit/character harus viable
-   - Counter system: A > B > C > A (bukan A > semua)
-   - Winrate setiap strategy harus 45-55%
-
-4. Progression Curve:
-   - Level 1-10: Tutorial, cepat, rewarding
-   - Level 10-30: Core loop, moderate pace
-   - Level 30-50: Endgame, slow but meaningful
-   - Level 50+: Prestige/New Game+ system
-
-Tips: Pakai spreadsheet untuk model ekonomi game kamu.`
+    patterns: [/bagus|keren|mantap|hebat|wow|amazing|cool|great/i],
+    responses: [
+      'Terima kasih! Mau tambah apa lagi ke scene? Saya bisa buatkan environment atau game template lainnya.',
+      'Makasih! Kalau mau explore lebih, coba "analisa scene" atau tambah environment baru.',
+    ],
   },
   {
-    keywords: ['bug', 'error', 'crash', 'masalah', 'problem', 'rusak', 'broken'],
-    response: `[ARIES BUG DETECTIVE]
-
-Saya scan scene kamu untuk masalah...
-
-Cara Aries mendeteksi bug:
-1. Scene Analysis - ketik "analisa scene" untuk full scan
-2. Runtime Detection - play mode otomatis track:
-   - Null references
-   - Missing assets
-   - Performance spikes
-   - Memory leaks
-   - Physics glitches
-
-3. Common Game Bugs & Fix:
-   - Player jatuh menembus lantai → Check collision layer + floor plane
-   - FPS drop → Kurangi draw calls, bake lighting
-   - Touch tidak responsif → Check input layer order
-   - Memory leak → Pastikan destroy objects saat scene change
-   - Black screen → Check camera position & light source
-
-Ketik "analisa scene" untuk scan scene yang sedang aktif sekarang.`
+    patterns: [/jelek|buruk|bad|ugly|gak bagus|tidak bagus/i],
+    responses: [
+      'Saya minta maaf. Apa yang perlu diperbaiki? Kasih tahu saya dan saya perbaiki sekarang juga. Saya belajar dari feedback kamu.',
+      'Maaf kalau belum sesuai harapan. Bilang apa yang kurang dan saya langsung improve. Setiap koreksi bikin saya lebih pintar.',
+    ],
   },
   {
-    keywords: ['analisa scene', 'analyze scene', 'scan scene', 'cek scene', 'check scene', 'analisis'],
-    response: '__SCENE_ANALYSIS__'  // Special handler
-  },
-  {
-    keywords: ['ide game', 'game idea', 'game apa', 'mau buat game apa', 'saran game', 'rekomendasi game'],
-    response: `[ARIES GAME IDEA GENERATOR]
-
-Berdasarkan tren pasar 2024-2025, ini game yang paling menguntungkan:
-
-MOBILE (Revenue tertinggi):
-1. Idle/Tycoon Game - Low effort to make, high retention
-   - Contoh: "Idle Factory Tycoon", "Cookie Clicker"
-   - Dev time: 2-4 minggu
-   - Revenue potential: $5k-50k/bulan
-
-2. Merge Game - Sangat populer di casual market
-   - Contoh: "Merge Dragons", "Merge Mansion"
-   - Dev time: 4-8 minggu
-   - Revenue potential: $10k-100k/bulan
-
-3. Puzzle + Story - Highest retention
-   - Contoh: "Homescapes", "Gardenscapes"
-   - Dev time: 6-12 minggu
-   - Revenue potential: $50k-500k/bulan
-
-4. Hyper Casual - Quick to launch, test market
-   - Simple mechanic (tap, swipe, timing)
-   - Dev time: 1-2 minggu
-   - Revenue: $1k-10k/bulan per game, volume play
-
-UNTUK TARGET $1M:
-- Buat 1 quality puzzle/merge game ATAU
-- Buat 10-20 hyper casual games (portfolio approach)
-
-Mau saya buatkan template untuk salah satu? Ketik:
-"buat game idle tycoon" / "buat game merge" / "buat game puzzle"`
-  },
-  {
-    keywords: ['idle', 'tycoon', 'clicker'],
-    response: `[ARIES] Membuat template Idle Tycoon Game...
-
-Idle Tycoon membutuhkan:
-- Resource generators (otomatis produce)
-- Upgrade system (exponential cost)
-- Prestige/Reset mechanic (multiplicator)
-- Offline earnings
-
-Scene dibuat dengan komponen dasar idle game.`,
-  },
-  {
-    keywords: ['merge', 'gabung'],
-    response: `[ARIES] Membuat template Merge Game...
-
-Merge Game membutuhkan:
-- Grid board (5x5 atau 7x7)
-- Merge chain items (level 1-15)
-- Energy system
-- Quest/Order system
-
-Scene dibuat dengan grid dan merge items.`,
+    patterns: [/tolong|please|minta|bantu/i],
+    responses: [
+      'Siap! Bilang apa yang kamu mau dan saya langsung kerjakan. Contoh: "buat landscape", "buat kota", "buat game fps".',
+    ],
   },
 ];
 
-// =========================================================
-// Initiative System - Proactive suggestions
-// =========================================================
-
-function generateInitiative(actors: Record<string, NeoActor>): string | null {
-  const actorList = Object.values(actors);
-  const actorCount = actorList.length;
-
-  // No actors = suggest creating something
-  if (actorCount <= 4) { // only default actors
-    return `💡 Scene masih kosong! Mau mulai buat game? Coba:
-- "buat game farmville" - Farming simulation
-- "buat game fps" - First person shooter
-- "ide game" - Saya kasih rekomendasi game yang profitable
-- "buat rumah" - Generate model 3D`;
+function getConversationalResponse(command: string): BrainResponse | null {
+  for (const pattern of CONVERSATION_PATTERNS) {
+    for (const regex of pattern.patterns) {
+      if (regex.test(command)) {
+        const response = pattern.responses[Math.floor(Math.random() * pattern.responses.length)];
+        return { response, actions: pattern.actions || [] };
+      }
+    }
   }
-
-  // Has game actors but no play test
-  const hasGameActors = actorList.some(a =>
-    a.name.includes('Farm') || a.name.includes('Cell') || a.name.includes('Arena') ||
-    a.name.includes('Platform') || a.name.includes('Village')
-  );
-  if (hasGameActors) {
-    return `💡 Scene sudah ada game objects! Sudah coba "play game" untuk test? Atau ketik "analisa scene" untuk cek bug.`;
-  }
-
   return null;
 }
 
 // =========================================================
-// Document Import Handler
+// DOCUMENT IMPORT HANDLER
 // =========================================================
 
-export function parseDocumentContent(text: string): string {
-  // Clean up extracted text
-  return text
-    .replace(/\r\n/g, '\n')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
+let storedDocuments: Array<{ name: string; content: string }> = [];
+
+export function storeDocument(name: string, content: string) {
+  storedDocuments.push({ name, content });
+  addKnowledge(`Dokumen "${name}" di-import dengan ${content.split(/\s+/).length} kata`);
+}
+
+export function getStoredDocuments() {
+  return storedDocuments;
 }
 
 export function processDocumentForAries(filename: string, content: string): BrainResponse {
   const lines = content.split('\n').filter(l => l.trim());
   const wordCount = content.split(/\s+/).length;
-
-  return {
-    response: `[ARIES DOCUMENT READER]
-
-📄 File: ${filename}
-📝 ${lines.length} baris, ${wordCount} kata
-
-Saya sudah baca dokumen game design kamu. Ini yang saya temukan:
-
-${extractGameDesignElements(content)}
-
-Dokumen ini sudah tersimpan di Aries memory. Kamu bisa tanya:
-- "apa isi dokumen?" - Ringkasan dokumen
-- "buat game dari dokumen" - Generate scene dari data dokumen
-- "analisa dokumen" - Analisis kelemahan game design`,
-    actions: [],
-  };
-}
-
-function extractGameDesignElements(content: string): string {
   const lower = content.toLowerCase();
   const elements: string[] = [];
 
-  // Detect game type
   const gameTypes = [
     { keywords: ['rpg', 'role playing', 'quest', 'level up'], type: 'RPG' },
     { keywords: ['puzzle', 'match', 'grid', 'sudoku'], type: 'Puzzle' },
@@ -473,230 +727,411 @@ function extractGameDesignElements(content: string): string {
   ];
 
   for (const gt of gameTypes) {
-    if (gt.keywords.some(k => lower.includes(k))) {
-      elements.push(`🎮 Genre terdeteksi: ${gt.type}`);
-    }
+    if (gt.keywords.some(k => lower.includes(k))) elements.push(`Genre: ${gt.type}`);
   }
 
-  // Detect mechanics
-  if (lower.includes('inventory') || lower.includes('item') || lower.includes('barang'))
-    elements.push('📦 Sistem inventory/item terdeteksi');
-  if (lower.includes('shop') || lower.includes('toko') || lower.includes('beli'))
-    elements.push('🛒 Sistem shop terdeteksi');
-  if (lower.includes('multiplayer') || lower.includes('pvp') || lower.includes('co-op'))
-    elements.push('👥 Multiplayer terdeteksi');
-  if (lower.includes('story') || lower.includes('cerita') || lower.includes('narasi'))
-    elements.push('📖 Story/Narasi terdeteksi');
-  if (lower.includes('skill') || lower.includes('ability') || lower.includes('kemampuan'))
-    elements.push('⚔️ Skill system terdeteksi');
+  if (lower.includes('inventory') || lower.includes('item')) elements.push('Inventory system');
+  if (lower.includes('shop') || lower.includes('toko')) elements.push('Shop system');
+  if (lower.includes('multiplayer') || lower.includes('pvp')) elements.push('Multiplayer');
+  if (lower.includes('story') || lower.includes('cerita')) elements.push('Story/Narasi');
 
-  if (elements.length === 0) {
-    elements.push('📋 Dokumen berisi data game design umum');
-    elements.push('💡 Tip: Tambahkan detail genre, mechanics, dan monetisasi untuk analisis lebih baik');
-  }
+  return {
+    response: `[ARIES] Dokumen "${filename}" dibaca!
 
-  return elements.join('\n');
+${lines.length} baris, ${wordCount} kata.
+${elements.length > 0 ? 'Terdeteksi: ' + elements.join(', ') : 'Dokumen game design umum.'}
+
+Ketik "buat game dari dokumen" untuk generate scene otomatis.`,
+    actions: [],
+  };
 }
 
 // =========================================================
-// Stored document memory
-// =========================================================
-
-let storedDocuments: Array<{ name: string; content: string }> = [];
-
-export function storeDocument(name: string, content: string) {
-  storedDocuments.push({ name, content });
-}
-
-export function getStoredDocuments() {
-  return storedDocuments;
-}
-
-// =========================================================
-// Main Brain Processing
+// MAIN BRAIN PROCESSOR
 // =========================================================
 
 export function processWithAriesBrain(command: string, actors: Record<string, NeoActor>): BrainResponse | null {
   const cmd = command.toLowerCase().trim();
+  const memory = loadMemory();
 
-  // Scene analysis command
+  // Check learned patterns first
+  if (memory.learnedPatterns[cmd]) {
+    return processWithAriesBrain(memory.learnedPatterns[cmd], actors);
+  }
+
+  // ===== SCENE ANALYSIS =====
   if (cmd.includes('analisa scene') || cmd.includes('analyze scene') || cmd.includes('scan scene') ||
-      cmd.includes('cek scene') || cmd.includes('check scene') || cmd.includes('analisis scene') ||
-      cmd.includes('cari bug') || cmd.includes('find bug') || cmd.includes('detect bug')) {
+      cmd.includes('cek scene') || cmd.includes('check scene') || cmd.includes('cari bug') || cmd.includes('find bug')) {
     const issues = analyzeScene(actors);
-    const errorCount = issues.filter(i => i.severity === 'error').length;
-    const warningCount = issues.filter(i => i.severity === 'warning').length;
-    const infoCount = issues.filter(i => i.severity === 'info').length;
+    const icons = { error: '🔴', warning: '🟡', info: '🟢' };
+    const text = issues.map(i => `${icons[i.severity]} [${i.category}] ${i.message}\n   → ${i.suggestion}`).join('\n\n');
+    const result = {
+      response: `[ARIES SCAN] ${Object.keys(actors).length} actors:\n\n${text}`,
+      actions: [] as Array<Record<string, unknown>>,
+    };
 
-    const severityIcon = (s: string) => s === 'error' ? '🔴' : s === 'warning' ? '🟡' : '🟢';
+    // Auto-fix: add missing essentials
+    const actorList = Object.values(actors);
+    if (!actorList.some(a => a.type.includes('light'))) {
+      result.actions.push({ type: 'add_actor', actorType: 'light_directional', name: 'Sun_AutoFix' });
+      result.response += '\n\n✅ Saya otomatis tambahkan Sun light.';
+    }
+    if (!actorList.some(a => a.type === 'player_start')) {
+      result.actions.push({ type: 'add_actor', actorType: 'player_start', name: 'PlayerStart_AutoFix' });
+      result.response += '\n✅ Saya otomatis tambahkan PlayerStart.';
+    }
 
-    const issueText = issues.map(i =>
-      `${severityIcon(i.severity)} [${i.category}] ${i.message}\n   → ${i.suggestion}`
-    ).join('\n\n');
+    addInteraction(command, result.response);
+    return result;
+  }
 
+  // ===== LANDSCAPE & ENVIRONMENT CREATION =====
+  if (cmd.includes('landscape') || cmd.includes('map sederhana') || cmd.includes('buat map') ||
+      cmd.includes('buat peta') || cmd.includes('terrain') || cmd.includes('buat world') ||
+      cmd.includes('open world') || cmd.includes('dunia')) {
+    addInteraction(command, 'landscape created');
+    return createLandscapeMap();
+  }
+
+  if (cmd.includes('kota') || cmd.includes('city') || cmd.includes('urban') || cmd.includes('gedung')) {
+    addInteraction(command, 'city created');
+    return createCity();
+  }
+
+  if (cmd.includes('desa') || cmd.includes('village') || cmd.includes('kampung')) {
+    addInteraction(command, 'village created');
+    return createVillage();
+  }
+
+  if (cmd.includes('dungeon') || cmd.includes('labirin') || cmd.includes('maze') || cmd.includes('ruang bawah tanah')) {
+    addInteraction(command, 'dungeon created');
+    return createDungeon();
+  }
+
+  if (cmd.includes('hutan') || cmd.includes('forest') || cmd.includes('jungle') || cmd.includes('rimba')) {
+    addInteraction(command, 'forest created');
+    return createForest();
+  }
+
+  if (cmd.includes('gurun') || cmd.includes('desert') || cmd.includes('padang pasir') || cmd.includes('sahara')) {
+    addInteraction(command, 'desert created');
+    return createDesert();
+  }
+
+  if (cmd.includes('pantai') || cmd.includes('beach') || cmd.includes('laut') || cmd.includes('ocean') || cmd.includes('seaside')) {
+    addInteraction(command, 'beach created');
+    return createBeach();
+  }
+
+  if (cmd.includes('salju') || cmd.includes('snow') || cmd.includes('winter') || cmd.includes('es') || cmd.includes('ice')) {
+    addInteraction(command, 'snow mountain created');
+    return createSnowMountain();
+  }
+
+  if ((cmd.includes('kastil') || cmd.includes('castle') || cmd.includes('benteng') || cmd.includes('fortress')) && !cmd.includes('buat model')) {
+    addInteraction(command, 'castle created');
+    return createCastle();
+  }
+
+  if (cmd.includes('space station') || cmd.includes('stasiun luar angkasa') || cmd.includes('luar angkasa') || cmd.includes('antariksa')) {
+    addInteraction(command, 'space station created');
+    return createSpaceStation();
+  }
+
+  if (cmd.includes('bawah laut') || cmd.includes('underwater') || cmd.includes('bawah air') || cmd.includes('dasar laut')) {
+    addInteraction(command, 'underwater created');
+    return createUnderwaterWorld();
+  }
+
+  // ===== GENERIC CREATION - catch "buat X" patterns =====
+  if (cmd.startsWith('buat ') || cmd.startsWith('bikin ') || cmd.startsWith('create ') || cmd.startsWith('tambah ') || cmd.startsWith('add ')) {
+    const target = cmd.replace(/^(buat|bikin|create|tambah|add)\s+/, '');
+
+    // Multiple objects
+    if (target.includes('pohon') || target.includes('tree')) {
+      const count = parseInt(target) || 5;
+      const actions: Array<Record<string, unknown>> = [];
+      for (let i = 1; i <= Math.min(count, 10); i++) {
+        actions.push({ type: 'add_actor', actorType: 'cylinder', name: `Tree_${i}` });
+      }
+      addInteraction(command, `${actions.length} trees created`);
+      return { response: `[ARIES] ${actions.length} pohon ditambahkan ke scene!`, actions };
+    }
+
+    if (target.includes('gunung') || target.includes('mountain') || target.includes('bukit') || target.includes('hill')) {
+      addInteraction(command, 'mountains created');
+      return {
+        response: '[ARIES] Gunung dan bukit ditambahkan!',
+        actions: [
+          { type: 'add_actor', actorType: 'cube', name: 'Mountain_Main' },
+          { type: 'add_actor', actorType: 'cube', name: 'Hill_1' },
+          { type: 'add_actor', actorType: 'cube', name: 'Hill_2' },
+          { type: 'add_actor', actorType: 'sphere', name: 'Rock_1' },
+          { type: 'add_actor', actorType: 'sphere', name: 'Rock_2' },
+        ],
+      };
+    }
+
+    if (target.includes('air') || target.includes('water') || target.includes('sungai') || target.includes('river') || target.includes('danau') || target.includes('lake')) {
+      addInteraction(command, 'water created');
+      return {
+        response: '[ARIES] Air ditambahkan! (danau + sungai)',
+        actions: [
+          { type: 'add_actor', actorType: 'plane', name: 'Lake' },
+          { type: 'add_actor', actorType: 'plane', name: 'River' },
+        ],
+      };
+    }
+
+    if (target.includes('jalan') || target.includes('road') || target.includes('path')) {
+      addInteraction(command, 'road created');
+      return {
+        response: '[ARIES] Jalan ditambahkan!',
+        actions: [
+          { type: 'add_actor', actorType: 'plane', name: 'Road_Main' },
+          { type: 'add_actor', actorType: 'plane', name: 'Road_Branch' },
+        ],
+      };
+    }
+
+    if (target.includes('npc') || target.includes('karakter') || target.includes('character') || target.includes('orang') || target.includes('person')) {
+      addInteraction(command, 'NPCs created');
+      return {
+        response: '[ARIES] NPC ditambahkan ke scene!',
+        actions: [
+          { type: 'add_actor', actorType: 'cylinder', name: 'NPC_Villager_1' },
+          { type: 'add_actor', actorType: 'cylinder', name: 'NPC_Villager_2' },
+          { type: 'add_actor', actorType: 'cylinder', name: 'NPC_Merchant' },
+          { type: 'add_actor', actorType: 'cylinder', name: 'NPC_Guard' },
+        ],
+      };
+    }
+
+    if (target.includes('rumah') && !target.includes('model')) {
+      addInteraction(command, 'houses created');
+      return {
+        response: '[ARIES] Rumah-rumah ditambahkan!',
+        actions: [
+          { type: 'add_actor', actorType: 'cube', name: 'House_1' },
+          { type: 'add_actor', actorType: 'cube', name: 'House_2' },
+          { type: 'add_actor', actorType: 'cube', name: 'House_3' },
+        ],
+      };
+    }
+
+    if (target.includes('batu') || target.includes('rock') || target.includes('stone')) {
+      addInteraction(command, 'rocks created');
+      return {
+        response: '[ARIES] Batu ditambahkan!',
+        actions: [
+          { type: 'add_actor', actorType: 'sphere', name: 'Rock_Large' },
+          { type: 'add_actor', actorType: 'sphere', name: 'Rock_Medium' },
+          { type: 'add_actor', actorType: 'sphere', name: 'Rock_Small' },
+        ],
+      };
+    }
+
+    if (target.includes('pagar') || target.includes('fence') || target.includes('wall') || target.includes('dinding') || target.includes('tembok')) {
+      addInteraction(command, 'walls created');
+      return {
+        response: '[ARIES] Dinding/pagar ditambahkan!',
+        actions: [
+          { type: 'add_actor', actorType: 'cube', name: 'Wall_1' },
+          { type: 'add_actor', actorType: 'cube', name: 'Wall_2' },
+          { type: 'add_actor', actorType: 'cube', name: 'Wall_3' },
+          { type: 'add_actor', actorType: 'cube', name: 'Wall_4' },
+        ],
+      };
+    }
+
+    if (target.includes('jembatan') || target.includes('bridge')) {
+      addInteraction(command, 'bridge created');
+      return {
+        response: '[ARIES] Jembatan ditambahkan!',
+        actions: [
+          { type: 'add_actor', actorType: 'cube', name: 'Bridge_Deck' },
+          { type: 'add_actor', actorType: 'cylinder', name: 'Bridge_Pillar_1' },
+          { type: 'add_actor', actorType: 'cylinder', name: 'Bridge_Pillar_2' },
+        ],
+      };
+    }
+
+    if (target.includes('toko') || target.includes('shop') || target.includes('warung')) {
+      addInteraction(command, 'shop created');
+      return {
+        response: '[ARIES] Toko ditambahkan!',
+        actions: [
+          { type: 'add_actor', actorType: 'cube', name: 'Shop' },
+          { type: 'add_actor', actorType: 'cube', name: 'Shop_Counter' },
+          { type: 'add_actor', actorType: 'cylinder', name: 'Shop_Sign' },
+        ],
+      };
+    }
+  }
+
+  // ===== MONETIZATION =====
+  if (cmd.includes('monetisasi') || cmd.includes('monetization') || cmd.includes('uang') || cmd.includes('revenue') ||
+      cmd.includes('pendapatan') || cmd.includes('penghasilan') || cmd.includes('dollar') || cmd.includes('sejuta') ||
+      cmd.includes('harga') || cmd.includes('pricing') || cmd.includes('iap') || cmd.includes('in app purchase')) {
+    addInteraction(command, 'monetization opened');
+    return { response: '__OPEN_MONETIZATION__', actions: [] };
+  }
+
+  // ===== GAME DESIGN DISCUSSIONS =====
+  if (cmd.includes('whale') || cmd.includes('big spender')) {
+    addInteraction(command, 'whale strategy');
+    return { response: `[ARIES] Whale Strategy:\n\n1. Limited Edition Items (FOMO)\n2. High-Value Bundles ($49.99-$99.99)\n3. VIP Tiers (Bronze→Diamond)\n4. Competitive features (leaderboards, tournaments)\n5. Social gifting\n\nWhale = top 1-2% tapi 50%+ revenue. Kunci: mereka harus merasa "worth it".`, actions: [] };
+  }
+
+  if (cmd.includes('retention') || cmd.includes('player balik') || cmd.includes('churn')) {
+    addInteraction(command, 'retention strategy');
+    return { response: `[ARIES] Retention Strategy:\n\nD1 (40%+): Tutorial singkat + reward besar\nD7 (20%+): Daily login + push notif\nD30 (10%+): Events mingguan + guild\n\nAnti-churn: Detect idle → "We miss you!" 70% discount\nReduce difficulty setelah 3x fail\nCome back bonus setelah 3 hari offline`, actions: [] };
+  }
+
+  if (cmd.includes('balance') || cmd.includes('seimbang') || cmd.includes('difficulty')) {
+    addInteraction(command, 'balance advice');
+    return { response: `[ARIES] Balance Tips:\n\n1. Dynamic Difficulty: fail 3x → kurangi 10%\n2. Economy: earn:spend = 1:1.5\n3. Combat: counter system A>B>C>A\n4. Progression: Level 1-10 cepat, 10-30 moderate, 30+ slow meaningful`, actions: [] };
+  }
+
+  if (cmd.includes('launch') || cmd.includes('rilis') || cmd.includes('release') || cmd.includes('publish')) {
+    addInteraction(command, 'launch strategy');
+    return { response: `[ARIES] Launch Strategy:\n\n1. Soft launch di 2-3 negara kecil\n2. Collect data retention + monetization\n3. Fix bugs, tune balance\n4. Submit 1 minggu sebelum target\n5. ASO: keywords, screenshots, video\n6. Contact YouTubers/reviewers\n7. Post-launch: patch cepat + event di week 2\n\nBudget min: $500-2000 untuk User Acquisition\nTarget CPI: $0.50-2.00`, actions: [] };
+  }
+
+  if (cmd.includes('ide game') || cmd.includes('game idea') || cmd.includes('game apa') || cmd.includes('saran game') || cmd.includes('rekomendasi game')) {
+    addInteraction(command, 'game ideas');
     return {
-      response: `[ARIES SCENE ANALYZER]
+      response: `[ARIES] Game Profitable 2025:
 
-Scan selesai untuk ${Object.keys(actors).length} actors:
-🔴 ${errorCount} Error | 🟡 ${warningCount} Warning | 🟢 ${infoCount} Info
+1. Idle/Tycoon ($5k-50k/bulan) → "buat game idle tycoon"
+2. Merge Game ($10k-100k/bulan) → "buat game merge"
+3. Puzzle+Story ($50k-500k/bulan)
+4. Hyper Casual ($1k-10k/bulan per game)
 
-${issueText}
+Untuk $1M: 1 quality puzzle/merge ATAU 10-20 hyper casual games.
 
-${errorCount > 0 ? '\n⚠️ Fix semua ERROR sebelum build!' : ''}`,
+Mau saya buatkan? Ketik nama template-nya!`,
       actions: [],
     };
   }
 
-  // Document-related commands
+  // ===== LEARNING COMMANDS =====
+  if (cmd.startsWith('ingat ') || cmd.startsWith('remember ')) {
+    const fact = command.replace(/^(ingat|remember)\s+/i, '');
+    addKnowledge(fact);
+    addInteraction(command, 'learned fact');
+    return { response: `[ARIES] Saya ingat: "${fact}"\n\nXP +15. Level: ${loadMemory().level}`, actions: [] };
+  }
+
+  if (cmd.includes('maksud saya') || cmd.includes('bukan,') || cmd.includes('yang benar')) {
+    const correction = command.replace(/^(bukan,?|maksud saya|yang benar)\s*/i, '');
+    const lastUserMsg = memory.conversationHistory.filter(h => h.role === 'user').slice(-2)[0];
+    if (lastUserMsg) {
+      learnCorrection(lastUserMsg.content, correction);
+      addInteraction(command, 'learned correction');
+      return { response: `[ARIES] Saya belajar! Kalau kamu bilang "${lastUserMsg.content}", maksudnya "${correction}".\n\nXP +25. Level: ${loadMemory().level}`, actions: [] };
+    }
+  }
+
+  if (cmd.includes('level aries') || cmd.includes('status aries') || cmd.includes('xp') || cmd.includes('experience')) {
+    const m = loadMemory();
+    const topCmds = Object.entries(m.favoriteCommands).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    return {
+      response: `[ARIES BRAIN STATUS]
+
+Level: ${m.level} (XP: ${m.xp})
+Total interaksi: ${m.interactions}
+Koreksi dipelajari: ${m.corrections.length}
+Knowledge base: ${m.knowledge.length} fakta
+Dokumen dibaca: ${storedDocuments.length}
+
+Top commands:
+${topCmds.map(([c, n]) => `  ${c}: ${n}x`).join('\n') || '  (belum ada)'}
+
+Saya makin pintar setiap interaksi! XP +10 per perintah, +25 per koreksi, +15 per knowledge.`,
+      actions: [],
+    };
+  }
+
+  // ===== DOCUMENT COMMANDS =====
   if (cmd.includes('apa isi dokumen') || cmd.includes('ringkas dokumen') || cmd.includes('summary dokumen')) {
     const docs = getStoredDocuments();
     if (docs.length === 0) {
-      return {
-        response: 'Belum ada dokumen yang di-import. Gunakan File > Import Word (.docx) atau Import PDF (.pdf) untuk upload dokumen game design kamu.',
-        actions: [],
-      };
+      return { response: 'Belum ada dokumen. Gunakan File > Import Word/PDF.', actions: [] };
     }
     const doc = docs[docs.length - 1];
     const preview = doc.content.substring(0, 500);
-    return {
-      response: `[ARIES DOCUMENT SUMMARY]\n\n📄 ${doc.name}\n\n${preview}${doc.content.length > 500 ? '\n...(lanjutan)' : ''}\n\n${extractGameDesignElements(doc.content)}`,
-      actions: [],
-    };
+    return { response: `📄 ${doc.name}:\n\n${preview}${doc.content.length > 500 ? '\n...' : ''}`, actions: [] };
   }
 
   if (cmd.includes('buat game dari dokumen') || cmd.includes('generate dari dokumen')) {
     const docs = getStoredDocuments();
-    if (docs.length === 0) {
-      return {
-        response: 'Import dokumen dulu via File > Import Word atau Import PDF.',
-        actions: [],
-      };
-    }
-    const doc = docs[docs.length - 1];
-    const lower = doc.content.toLowerCase();
-
-    // Detect game type from document and create appropriate template
-    if (lower.includes('farm') || lower.includes('harvest')) {
-      return {
-        response: `[ARIES] Dari dokumen "${doc.name}", saya deteksi game farming. Membuat scene farming berdasarkan data dokumen...`,
-        actions: [
-          { type: 'add_actor', actorType: 'plane', name: 'FarmLand' },
-          { type: 'add_actor', actorType: 'cube', name: 'House' },
-          { type: 'add_actor', actorType: 'cube', name: 'Barn' },
-          { type: 'add_actor', actorType: 'cube', name: 'FarmPlot_1' },
-          { type: 'add_actor', actorType: 'cube', name: 'FarmPlot_2' },
-          { type: 'add_actor', actorType: 'light_directional', name: 'Sun' },
-          { type: 'add_actor', actorType: 'player_start', name: 'FarmerSpawn' },
-          { type: 'add_actor', actorType: 'camera', name: 'GameCamera' },
-        ],
-      };
-    }
-    // Default
+    if (docs.length === 0) return { response: 'Import dokumen dulu via File > Import Word/PDF.', actions: [] };
+    addInteraction(command, 'game from document');
     return {
-      response: `[ARIES] Membuat scene dari dokumen "${doc.name}"...`,
+      response: `[ARIES] Scene dibuat dari dokumen "${docs[docs.length - 1].name}"!`,
       actions: [
         { type: 'add_actor', actorType: 'plane', name: 'Ground' },
-        { type: 'add_actor', actorType: 'cube', name: 'MainObject' },
+        { type: 'add_actor', actorType: 'cube', name: 'MainBuilding' },
+        { type: 'add_actor', actorType: 'cube', name: 'Structure_1' },
+        { type: 'add_actor', actorType: 'cube', name: 'Structure_2' },
+        { type: 'add_actor', actorType: 'cylinder', name: 'Prop_1' },
+        { type: 'add_actor', actorType: 'cylinder', name: 'Prop_2' },
+        { type: 'add_actor', actorType: 'sphere', name: 'Item_1' },
         { type: 'add_actor', actorType: 'light_directional', name: 'Sun' },
-        { type: 'add_actor', actorType: 'player_start', name: 'PlayerSpawn' },
         { type: 'add_actor', actorType: 'camera', name: 'GameCamera' },
+        { type: 'add_actor', actorType: 'player_start', name: 'PlayerSpawn' },
       ],
     };
   }
 
-  // Monetization via console
-  if (cmd.includes('monetization') || cmd.includes('monetisasi') || cmd.includes('iap') || cmd.includes('in app purchase') ||
-      cmd.includes('harga') || cmd.includes('pricing')) {
-    return {
-      response: `__OPEN_MONETIZATION__`,
-      actions: [],
-    };
+  // ===== CONVERSATIONAL RESPONSES =====
+  const convo = getConversationalResponse(command);
+  if (convo) {
+    addInteraction(command, convo.response.substring(0, 50));
+    return convo;
   }
 
-  // Game design discussion topics
-  for (const topic of GAME_DESIGN_TOPICS) {
-    if (topic.keywords.some(k => cmd.includes(k))) {
-      if (topic.response === '__SCENE_ANALYSIS__') {
-        // Delegate to scene analysis
-        return processWithAriesBrain('analisa scene', actors);
-      }
-
-      // For idle/merge game templates, also add actors
-      if (topic.keywords.includes('idle') || topic.keywords.includes('tycoon')) {
-        return {
-          response: topic.response,
-          actions: [
-            { type: 'add_actor', actorType: 'plane', name: 'Ground' },
-            { type: 'add_actor', actorType: 'cube', name: 'Generator_1' },
-            { type: 'add_actor', actorType: 'cube', name: 'Generator_2' },
-            { type: 'add_actor', actorType: 'cube', name: 'Generator_3' },
-            { type: 'add_actor', actorType: 'cube', name: 'UpgradeShop' },
-            { type: 'add_actor', actorType: 'sphere', name: 'PrestigePortal' },
-            { type: 'add_actor', actorType: 'camera', name: 'TycoonCamera' },
-            { type: 'add_actor', actorType: 'light_directional', name: 'Sun' },
-            { type: 'add_actor', actorType: 'player_start', name: 'PlayerSpawn' },
-          ],
-        };
-      }
-
-      if (topic.keywords.includes('merge')) {
-        return {
-          response: topic.response,
-          actions: [
-            { type: 'add_actor', actorType: 'plane', name: 'MergeBoard' },
-            { type: 'add_actor', actorType: 'cube', name: 'MergeSlot_1' },
-            { type: 'add_actor', actorType: 'cube', name: 'MergeSlot_2' },
-            { type: 'add_actor', actorType: 'cube', name: 'MergeSlot_3' },
-            { type: 'add_actor', actorType: 'cube', name: 'MergeSlot_4' },
-            { type: 'add_actor', actorType: 'cube', name: 'MergeSlot_5' },
-            { type: 'add_actor', actorType: 'sphere', name: 'MergeItem_A' },
-            { type: 'add_actor', actorType: 'sphere', name: 'MergeItem_B' },
-            { type: 'add_actor', actorType: 'camera', name: 'MergeCamera' },
-            { type: 'add_actor', actorType: 'light_directional', name: 'Sun' },
-          ],
-        };
-      }
-
-      return { response: topic.response, actions: [] };
-    }
-  }
-
-  // Initiative / proactive suggestion
-  if (cmd.includes('saran') || cmd.includes('suggest') || cmd.includes('apa yang harus') || cmd.includes('what should')) {
-    const initiative = generateInitiative(actors);
-    if (initiative) {
-      return { response: initiative, actions: [] };
-    }
-  }
-
-  // Conversational discussion about game
-  if (cmd.includes('diskusi') || cmd.includes('discuss') || cmd.includes('ngobrol') || cmd.includes('chat') ||
-      cmd.includes('bagaimana') || cmd.includes('gimana') || cmd.includes('menurut kamu') || cmd.includes('pendapat')) {
-    const actorCount = Object.keys(actors).length;
+  // ===== DISCUSSION MODE =====
+  if (cmd.includes('diskusi') || cmd.includes('discuss') || cmd.includes('ngobrol') || cmd.includes('chat')) {
+    addInteraction(command, 'discussion mode');
     return {
       response: `[ARIES DISCUSSION MODE]
 
-Saya siap diskusi! Scene kamu saat ini punya ${actorCount} actors.
+Saya siap ngobrol! Topik:
+🗺️ "buat landscape/kota/hutan/dungeon" → langsung buat
+🎮 "ide game" → rekomendasi profitable
+💰 "monetisasi" → strategi revenue
+🔧 "balance" → tips balancing
+🚀 "launch" → strategi rilis
+🐛 "analisa scene" → cari bug
+📊 "retention" → bikin player balik
+🐋 "whale" → maximize big spender
 
-Topik yang bisa kita diskusikan:
-🎮 "ide game" - Rekomendasi game yang profitable
-💰 "monetisasi" - Strategi revenue & IAP pricing
-🔧 "balance" - Game balancing tips
-🚀 "launch" - Strategi rilis & marketing
-🐛 "analisa scene" - Cari bug & masalah
-📊 "retention" - Cara bikin player balik lagi
-🐋 "strategi whale" - Maximize big spender revenue
-
-Atau tanya apa saja tentang game development! Saya jawab berdasarkan pengetahuan saya tentang:
-- Game design principles
-- Monetization best practices
-- Mobile game market trends
-- Player psychology
-- Technical game architecture`,
+Atau tanya apa saja! Level saya: ${loadMemory().level}`,
       actions: [],
     };
   }
 
-  // Return null = not handled by brain, fall through to existing pattern matching
+  // ===== SARAN / INITIATIVE =====
+  if (cmd.includes('saran') || cmd.includes('suggest') || cmd.includes('apa yang harus')) {
+    const actorList = Object.values(actors);
+    const actorCount = actorList.length;
+    addInteraction(command, 'suggestion');
+
+    if (actorCount <= 4) {
+      return {
+        response: `[ARIES] Scene masih kosong! Saya sarankan:\n\n1. "buat landscape" → landscape lengkap\n2. "buat kota" → kota dengan gedung\n3. "buat game farmville" → langsung game template\n4. "buat hutan" → hutan lebat\n\nKetik salah satu dan saya LANGSUNG buat!`,
+        actions: [],
+      };
+    }
+
+    return {
+      response: `[ARIES] Scene punya ${actorCount} actors. Saran:\n\n1. "analisa scene" → cek bug\n2. "play game" → test di play mode\n3. "monetisasi" → atur strategi revenue\n4. "build" → package untuk rilis\n5. Tambah environment: "buat hutan", "buat kota", dll`,
+      actions: [],
+    };
+  }
+
+  // Not handled by brain - return null to fall through
   return null;
 }
