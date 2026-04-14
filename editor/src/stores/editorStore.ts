@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { EditorState, ActorType, Transform, ChatMessage, NeoActor, TransformMode, TransformSpace, ViewMode } from '../types/editor';
-import { processWithAriesBrain } from '../engine/AriesBrain';
+import { processWithAriesBrain, queryLLM } from '../engine/AriesBrain';
 
 let actorCounter = 0;
 let messageCounter = 0;
@@ -855,9 +855,29 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           }
         }
       })
-      .catch(() => {
+      .catch(async () => {
         // Client-side AI processing (works without backend!)
         const result = processCommandOffline(content, get().actors);
+
+        // If result is the default fallback, try LLM for smarter response
+        if (result.response.includes('Saya mengerti kamu bilang:') && result.actions.length === 0) {
+          try {
+            const llmResponse = await queryLLM(content);
+            if (llmResponse) {
+              const aiMsg: ChatMessage = {
+                id: generateMessageId(),
+                role: 'assistant',
+                content: `[ARIES LLM] ${llmResponse}`,
+                timestamp: Date.now(),
+              };
+              set((state) => ({
+                chatMessages: [...state.chatMessages, aiMsg],
+                isAiThinking: false,
+              }));
+              return;
+            }
+          } catch { /* LLM failed, use built-in response */ }
+        }
 
         const aiMsg: ChatMessage = {
           id: generateMessageId(),
