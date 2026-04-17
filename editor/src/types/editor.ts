@@ -29,6 +29,10 @@ export type ActorType =
   | 'sphere'
   | 'plane'
   | 'cylinder'
+  | 'cone'
+  | 'torus'
+  | 'ring'
+  | 'capsule'
   | 'light_directional'
   | 'light_point'
   | 'light_spot'
@@ -39,13 +43,51 @@ export type ActorType =
   | 'audio_source'
   | 'trigger_volume'
   | 'player_start'
-  | 'landscape';
+  | 'landscape'
+  | 'sprite'
+  | 'tilemap'
+  | 'text_3d'
+  | 'water'
+  | 'foliage';
+
+export interface MaterialProperties {
+  color?: string;
+  roughness?: number;
+  metalness?: number;
+  emissive?: string;
+  emissiveIntensity?: number;
+  opacity?: number;
+  transparent?: boolean;
+  wireframe?: boolean;
+  texturePath?: string;
+  normalMapPath?: string;
+  side?: 'front' | 'back' | 'double';
+}
+
+export interface SpriteProperties {
+  texturePath?: string;
+  color?: string;
+  width?: number;
+  height?: number;
+  flipX?: boolean;
+  flipY?: boolean;
+}
+
+export interface TilemapProperties {
+  tileWidth?: number;
+  tileHeight?: number;
+  columns?: number;
+  rows?: number;
+  texturePath?: string;
+  tileData?: number[][];
+}
 
 export interface NeoComponent {
   id: string;
   type: string;
   name: string;
   properties: Record<string, PropertyValue>;
+  material?: MaterialProperties;
 }
 
 export type PropertyValue = string | number | boolean | Vector3 | number[];
@@ -81,6 +123,14 @@ export type TransformMode = 'translate' | 'rotate' | 'scale';
 export type TransformSpace = 'world' | 'local';
 export type ViewMode = 'perspective' | 'top' | 'front' | 'right';
 
+export interface ActorCreateOptions {
+  transform?: Partial<Transform>;
+  material?: MaterialProperties;
+  components?: NeoComponent[];
+  visible?: boolean;
+  parentId?: string | null;
+}
+
 export interface EditorState {
   // Scene
   actors: Record<string, NeoActor>;
@@ -110,7 +160,8 @@ export interface EditorState {
   
   // Actions
   selectActor: (id: string | null) => void;
-  addActor: (type: ActorType, name?: string) => void;
+  addActor: (type: ActorType, name?: string, options?: ActorCreateOptions) => void;
+  addActorBatch: (actors: Array<{ type: ActorType; name: string; transform?: Partial<Transform>; material?: MaterialProperties }>) => void;
   removeActor: (id: string) => void;
   updateActorTransform: (id: string, transform: Partial<Transform>) => void;
   renameActor: (id: string, name: string) => void;
@@ -125,6 +176,11 @@ export interface EditorState {
   addSystemMessage: (content: string) => void;
   setConnectionStatus: (engine: boolean, aries: boolean) => void;
   setFps: (fps: number) => void;
+
+  // Asset Management
+  generatedAssets: Array<{ id: string; name: string; type: string; category: string; data: string; thumbnail?: string; createdAt: number }>;
+  addGeneratedAsset: (asset: { name: string; type: string; category: string; data: string; thumbnail?: string }) => string;
+  getAssetsByCategory: (category: string) => Array<{ id: string; name: string; type: string; category: string; data: string; thumbnail?: string; createdAt: number }>;
 
   // Scene Management
   newScene: () => void;

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { EditorState, ActorType, Transform, ChatMessage, NeoActor, TransformMode, TransformSpace, ViewMode } from '../types/editor';
+import type { EditorState, ActorType, Transform, ChatMessage, NeoActor, TransformMode, TransformSpace, ViewMode, ActorCreateOptions, MaterialProperties } from '../types/editor';
 import { processWithAriesBrain, queryLLM } from '../engine/AriesBrain';
 
 let actorCounter = 0;
@@ -22,12 +22,16 @@ function createDefaultTransform(): Transform {
 }
 
 function getActorIcon(type: ActorType): string {
-  const icons: Record<ActorType, string> = {
+  const icons: Record<string, string> = {
     empty: '○',
     cube: '⬜',
     sphere: '⚪',
     plane: '▬',
     cylinder: '⬛',
+    cone: '🔺',
+    torus: '⭕',
+    ring: '💍',
+    capsule: '💊',
     light_directional: '☀',
     light_point: '💡',
     light_spot: '🔦',
@@ -39,6 +43,11 @@ function getActorIcon(type: ActorType): string {
     trigger_volume: '🟩',
     player_start: '🚩',
     landscape: '🏔',
+    sprite: '🖼',
+    tilemap: '🗺',
+    text_3d: '🔤',
+    water: '🌊',
+    foliage: '🌿',
   };
   return icons[type] || '○';
 }
@@ -596,6 +605,24 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   ariesConnected: false,
   fps: 60,
 
+  // Generated Assets (for marketplace)
+  generatedAssets: JSON.parse(localStorage.getItem('neoengine_generated_assets') || '[]'),
+
+  addGeneratedAsset: (asset) => {
+    const id = `asset_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    const newAsset = { id, ...asset, createdAt: Date.now() };
+    set((state) => {
+      const updated = [...state.generatedAssets, newAsset];
+      localStorage.setItem('neoengine_generated_assets', JSON.stringify(updated));
+      return { generatedAssets: updated };
+    });
+    return id;
+  },
+
+  getAssetsByCategory: (category) => {
+    return get().generatedAssets.filter(a => a.category === category);
+  },
+
   // Content Browser
   currentPath: '/Game',
   assets: [
@@ -618,7 +645,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   // Actions
   selectActor: (id) => set({ selectedActorId: id }),
 
-  addActor: (type, name) => {
+  addActor: (type, name, options) => {
     pushUndo(get().actors);
     const id = generateId();
     const defaultName = name || `${type.charAt(0).toUpperCase() + type.slice(1).replace(/_/g, '')}`;
@@ -626,17 +653,80 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       id,
       name: defaultName,
       type,
-      transform: createDefaultTransform(),
-      visible: true,
+      transform: {
+        position: options?.transform?.position || createDefaultTransform().position,
+        rotation: options?.transform?.rotation || createDefaultTransform().rotation,
+        scale: options?.transform?.scale || createDefaultTransform().scale,
+      },
+      visible: options?.visible !== undefined ? options.visible : true,
       children: [],
-      parentId: null,
-      components: [],
+      parentId: options?.parentId || null,
+      components: options?.components || [],
     };
+    // If material properties are provided, add a RenderComponent
+    if (options?.material) {
+      const mat = options.material;
+      actor.components.push({
+        id: `comp_mat_${id}`,
+        type: 'RenderMaterialComponent',
+        name: 'Material',
+        properties: {
+          color: mat.color || '#666666',
+          roughness: mat.roughness ?? 0.6,
+          metalness: mat.metalness ?? 0.2,
+          emissive: mat.emissive || '#000000',
+          emissiveIntensity: mat.emissiveIntensity ?? 0,
+          opacity: mat.opacity ?? 1,
+          transparent: mat.transparent ?? false,
+          wireframe: mat.wireframe ?? false,
+        },
+        material: mat,
+      });
+    }
     set((state) => ({
       actors: { ...state.actors, [id]: actor },
       selectedActorId: id,
     }));
     return id;
+  },
+
+  addActorBatch: (actorDefs) => {
+    pushUndo(get().actors);
+    const newActors: Record<string, NeoActor> = {};
+    for (const def of actorDefs) {
+      const id = generateId();
+      const actor: NeoActor = {
+        id,
+        name: def.name,
+        type: def.type,
+        transform: {
+          position: def.transform?.position || createDefaultTransform().position,
+          rotation: def.transform?.rotation || createDefaultTransform().rotation,
+          scale: def.transform?.scale || createDefaultTransform().scale,
+        },
+        visible: true,
+        children: [],
+        parentId: null,
+        components: [],
+      };
+      if (def.material) {
+        actor.components.push({
+          id: `comp_mat_${id}`,
+          type: 'RenderMaterialComponent',
+          name: 'Material',
+          properties: {
+            color: def.material.color || '#666666',
+            roughness: def.material.roughness ?? 0.6,
+            metalness: def.material.metalness ?? 0.2,
+          },
+          material: def.material,
+        });
+      }
+      newActors[id] = actor;
+    }
+    set((state) => ({
+      actors: { ...state.actors, ...newActors },
+    }));
   },
 
   removeActor: (id) => {

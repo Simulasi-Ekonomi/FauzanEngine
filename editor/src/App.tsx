@@ -27,17 +27,35 @@ export function App() {
 
   const actors = useEditorStore((s) => s.actors);
   const addActor = useEditorStore((s) => s.addActor);
+  const addActorBatch = useEditorStore((s) => s.addActorBatch);
   const addSystemMessage = useEditorStore((s) => s.addSystemMessage);
   const isPlaying = useEditorStore((s) => s.isPlaying);
+  const addGeneratedAsset = useEditorStore((s) => s.addGeneratedAsset);
   const togglePlay = useEditorStore((s) => s.togglePlay);
 
-  // Handle 3D model generation
+  // Handle 3D model generation - NOW WITH PROPER TRANSFORMS AND COLORS
   const handleModelGenerate = useCallback((model: GeneratedModel) => {
-    for (const part of model.actors) {
-      addActor(part.type as any, part.name);
-    }
-    addSystemMessage(`[3D Gen] Added "${model.name}" to scene (${model.actors.length} parts, ${model.vertices} vertices)`);
-  }, [addActor, addSystemMessage]);
+    const batchDefs = model.actors.map((part) => ({
+      type: part.type as any,
+      name: part.name,
+      transform: {
+        position: part.position,
+        scale: part.scale,
+      },
+      material: part.color ? { color: part.color } : undefined,
+    }));
+    addActorBatch(batchDefs);
+
+    // Save to generated assets for marketplace
+    addGeneratedAsset({
+      name: model.name,
+      type: model.type,
+      category: model.type,
+      data: JSON.stringify(model),
+    });
+
+    addSystemMessage(`[3D Gen] Added "${model.name}" to scene (${model.actors.length} parts, ${model.vertices} vertices, ${model.faces} faces)`);
+  }, [addActorBatch, addSystemMessage, addGeneratedAsset]);
 
   // Handle AI special commands (called from AIConsole)
   const handleAISpecialCommand = useCallback((response: string) => {
@@ -48,6 +66,16 @@ export function App() {
         handleModelGenerate(model);
         addSystemMessage(`[Aries 3D] Generated "${model.name}" - ${model.vertices} vertices, ${model.actors.length} parts`);
       }
+      return true;
+    }
+    if (response.startsWith('__ADD_ACTOR__:')) {
+      const data = JSON.parse(response.replace('__ADD_ACTOR__:', ''));
+      addActorBatch(data.map((a: any) => ({
+        type: a.type, name: a.name,
+        transform: a.transform ? { position: a.transform.position, scale: a.transform.scale } : undefined,
+        material: a.color ? { color: a.color } : undefined,
+      })));
+      addSystemMessage(`[Aries] Added ${data.length} actors to scene`);
       return true;
     }
     if (response === '__OPEN_BUILD_DIALOG__') {

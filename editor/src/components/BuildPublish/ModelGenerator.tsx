@@ -326,6 +326,259 @@ export function generateModelFromPrompt(prompt: string): GeneratedModel | null {
     };
   }
 
+  // === NEW HIGH-DETAIL MODELS ===
+
+  // Japanese Temple / Kuil Jepang
+  if (p.includes('kuil') || p.includes('temple') || p.includes('japanese temple')) {
+    return {
+      name: 'Japanese Temple', type: 'environment', vertices: 480, faces: 240,
+      actors: [
+        { name: 'Temple_Base', type: 'cube', position: { x: 0, y: 0.3, z: 0 }, scale: { x: 6, y: 0.6, z: 5 }, color: '#8B7355' },
+        { name: 'Temple_Walls', type: 'cube', position: { x: 0, y: 1.3, z: 0 }, scale: { x: 5.5, y: 1.4, z: 4.5 }, color: '#F5F5DC' },
+        { name: 'Temple_Roof_Base', type: 'cube', position: { x: 0, y: 2.3, z: 0 }, scale: { x: 6.5, y: 0.3, z: 5.5 }, color: '#2F1B14' },
+        { name: 'Temple_Roof_Top', type: 'cone', position: { x: 0, y: 3, z: 0 }, scale: { x: 3.5, y: 1.5, z: 3.5 }, color: '#3C2415' },
+        { name: 'Temple_Pillar_FL', type: 'cylinder', position: { x: -2.2, y: 1.3, z: 1.8 }, scale: { x: 0.2, y: 2.6, z: 0.2 }, color: '#C41E3A' },
+        { name: 'Temple_Pillar_FR', type: 'cylinder', position: { x: 2.2, y: 1.3, z: 1.8 }, scale: { x: 0.2, y: 2.6, z: 0.2 }, color: '#C41E3A' },
+        { name: 'Temple_Pillar_BL', type: 'cylinder', position: { x: -2.2, y: 1.3, z: -1.8 }, scale: { x: 0.2, y: 2.6, z: 0.2 }, color: '#C41E3A' },
+        { name: 'Temple_Pillar_BR', type: 'cylinder', position: { x: 2.2, y: 1.3, z: -1.8 }, scale: { x: 0.2, y: 2.6, z: 0.2 }, color: '#C41E3A' },
+        { name: 'Temple_Steps', type: 'cube', position: { x: 0, y: 0.1, z: 2.8 }, scale: { x: 2, y: 0.2, z: 0.6 }, color: '#808080' },
+        { name: 'Temple_Lantern_L', type: 'cube', position: { x: -3.5, y: 1, z: 2.5 }, scale: { x: 0.4, y: 0.8, z: 0.4 }, color: '#A0A0A0' },
+        { name: 'Temple_Lantern_R', type: 'cube', position: { x: 3.5, y: 1, z: 2.5 }, scale: { x: 0.4, y: 0.8, z: 0.4 }, color: '#A0A0A0' },
+        { name: 'Temple_Torii', type: 'cube', position: { x: 0, y: 2.5, z: 4.5 }, scale: { x: 4, y: 0.3, z: 0.3 }, color: '#C41E3A' },
+        { name: 'Temple_Torii_Pillar_L', type: 'cylinder', position: { x: -1.8, y: 1.5, z: 4.5 }, scale: { x: 0.15, y: 5, z: 0.15 }, color: '#C41E3A' },
+        { name: 'Temple_Torii_Pillar_R', type: 'cylinder', position: { x: 1.8, y: 1.5, z: 4.5 }, scale: { x: 0.15, y: 5, z: 0.15 }, color: '#C41E3A' },
+      ],
+    };
+  }
+
+  // Modern Skyscraper
+  if (p.includes('gedung') || p.includes('skyscraper') || p.includes('pencakar langit')) {
+    return {
+      name: 'Modern Skyscraper', type: 'environment', vertices: 380, faces: 190,
+      actors: [
+        { name: 'Building_Base', type: 'cube', position: { x: 0, y: 3, z: 0 }, scale: { x: 3, y: 6, z: 3 }, color: '#4682B4' },
+        { name: 'Building_Glass_L', type: 'cube', position: { x: -0.2, y: 3, z: 1.55 }, scale: { x: 2.5, y: 5.5, z: 0.05 }, color: '#87CEEB' },
+        { name: 'Building_Glass_R', type: 'cube', position: { x: 0.2, y: 3, z: -1.55 }, scale: { x: 2.5, y: 5.5, z: 0.05 }, color: '#87CEEB' },
+        { name: 'Building_Roof', type: 'cube', position: { x: 0, y: 6.2, z: 0 }, scale: { x: 3.2, y: 0.3, z: 3.2 }, color: '#36648B' },
+        { name: 'Building_Antenna', type: 'cylinder', position: { x: 0, y: 7.5, z: 0 }, scale: { x: 0.05, y: 2.5, z: 0.05 }, color: '#888888' },
+        { name: 'Building_Light', type: 'cylinder', position: { x: 0, y: 8.8, z: 0 }, scale: { x: 0.08, y: 0.15, z: 0.08 }, color: '#FF0000' },
+        { name: 'Building_Lobby', type: 'cube', position: { x: 0, y: 0.5, z: 1.55 }, scale: { x: 1.5, y: 1, z: 0.1 }, color: '#87CEEB' },
+        { name: 'Building_Windows_L', type: 'cube', position: { x: -1.56, y: 3, z: 0 }, scale: { x: 0.05, y: 5, z: 2.5 }, color: '#4682B4' },
+        { name: 'Building_Windows_R', type: 'cube', position: { x: 1.56, y: 3, z: 0 }, scale: { x: 0.05, y: 5, z: 2.5 }, color: '#4682B4' },
+      ],
+    };
+  }
+
+  // Fantasy Tower / Menara Fantasy
+  if (p.includes('menara') || p.includes('tower')) {
+    return {
+      name: 'Fantasy Tower', type: 'environment', vertices: 320, faces: 160,
+      actors: [
+        { name: 'Tower_Base', type: 'cylinder', position: { x: 0, y: 1.5, z: 0 }, scale: { x: 1.5, y: 3, z: 1.5 }, color: '#8B8682' },
+        { name: 'Tower_Mid', type: 'cylinder', position: { x: 0, y: 4, z: 0 }, scale: { x: 1.2, y: 2, z: 1.2 }, color: '#808080' },
+        { name: 'Tower_Top', type: 'cylinder', position: { x: 0, y: 6.5, z: 0 }, scale: { x: 1.4, y: 2, z: 1.4 }, color: '#696969' },
+        { name: 'Tower_Cone', type: 'cone', position: { x: 0, y: 8.5, z: 0 }, scale: { x: 1.6, y: 2.5, z: 1.6 }, color: '#8B0000' },
+        { name: 'Tower_Flag', type: 'cube', position: { x: 0.3, y: 10.5, z: 0 }, scale: { x: 0.8, y: 0.5, z: 0.05 }, color: '#FFD700' },
+        { name: 'Tower_Door', type: 'cube', position: { x: 0, y: 0.8, z: 1.5 }, scale: { x: 0.8, y: 1.4, z: 0.1 }, color: '#5C4033' },
+        { name: 'Tower_Window_1', type: 'cube', position: { x: 0, y: 5, z: 1.25 }, scale: { x: 0.4, y: 0.5, z: 0.05 }, color: '#87CEEB' },
+        { name: 'Tower_Window_2', type: 'cube', position: { x: 0, y: 6.5, z: 1.45 }, scale: { x: 0.5, y: 0.6, z: 0.05 }, color: '#87CEEB' },
+      ],
+    };
+  }
+
+  // Wooden Cabin / Kabin Kayu
+  if (p.includes('kabin') || p.includes('cabin') || p.includes('wooden')) {
+    return {
+      name: 'Wooden Cabin', type: 'environment', vertices: 280, faces: 140,
+      actors: [
+        { name: 'Cabin_Floor', type: 'cube', position: { x: 0, y: 0.15, z: 0 }, scale: { x: 3.5, y: 0.3, z: 3 }, color: '#8B7355' },
+        { name: 'Cabin_Wall_Back', type: 'cube', position: { x: 0, y: 1.2, z: -1.45 }, scale: { x: 3.5, y: 1.8, z: 0.15 }, color: '#A0522D' },
+        { name: 'Cabin_Wall_Left', type: 'cube', position: { x: -1.7, y: 1.2, z: 0 }, scale: { x: 0.15, y: 1.8, z: 3 }, color: '#8B4513' },
+        { name: 'Cabin_Wall_Right', type: 'cube', position: { x: 1.7, y: 1.2, z: 0 }, scale: { x: 0.15, y: 1.8, z: 3 }, color: '#8B4513' },
+        { name: 'Cabin_Roof', type: 'cone', position: { x: 0, y: 2.8, z: 0 }, scale: { x: 2.5, y: 1.2, z: 2.5 }, color: '#6B4226' },
+        { name: 'Cabin_Door', type: 'cube', position: { x: 0, y: 0.9, z: 1.5 }, scale: { x: 0.8, y: 1.5, z: 0.1 }, color: '#5C4033' },
+        { name: 'Cabin_Chimney', type: 'cube', position: { x: 1, y: 3, z: -0.5 }, scale: { x: 0.4, y: 1.2, z: 0.4 }, color: '#696969' },
+        { name: 'Cabin_Porch', type: 'cube', position: { x: 0, y: 0.05, z: 2 }, scale: { x: 2.5, y: 0.1, z: 1 }, color: '#8B7355' },
+        { name: 'Cabin_Window', type: 'cube', position: { x: -0.8, y: 1.4, z: 1.55 }, scale: { x: 0.5, y: 0.5, z: 0.05 }, color: '#FFD700' },
+      ],
+    };
+  }
+
+  // Boat / Perahu
+  if (p.includes('perahu') || p.includes('boat')) {
+    return {
+      name: 'Boat', type: 'vehicle', vertices: 160, faces: 80,
+      actors: [
+        { name: 'Boat_Hull', type: 'cube', position: { x: 0, y: 0.4, z: 0 }, scale: { x: 1.5, y: 0.4, z: 4 }, color: '#8B4513' },
+        { name: 'Boat_Hull_Front', type: 'cone', position: { x: 0, y: 0.4, z: 2.5 }, scale: { x: 0.6, y: 0.3, z: 1 }, color: '#A0522D' },
+        { name: 'Boat_Deck', type: 'cube', position: { x: 0, y: 0.65, z: 0 }, scale: { x: 1.2, y: 0.1, z: 3.5 }, color: '#DEB887' },
+        { name: 'Boat_Mast', type: 'cylinder', position: { x: 0, y: 2, z: 0 }, scale: { x: 0.06, y: 2.5, z: 0.06 }, color: '#8B4513' },
+        { name: 'Boat_Sail', type: 'cube', position: { x: 0.6, y: 2.2, z: 0.3 }, scale: { x: 0.05, y: 1.5, z: 1.8 }, color: '#FFFAF0' },
+        { name: 'Boat_Sail2', type: 'cube', position: { x: -0.6, y: 2, z: -0.2 }, scale: { x: 0.05, y: 1.2, z: 1.5 }, color: '#FFFAF0' },
+      ],
+    };
+  }
+
+  // Helicopter / Helikopter
+  if (p.includes('helikopter') || p.includes('helicopter')) {
+    return {
+      name: 'Helicopter', type: 'vehicle', vertices: 220, faces: 110,
+      actors: [
+        { name: 'Heli_Body', type: 'sphere', position: { x: 0, y: 1.5, z: 0 }, scale: { x: 1, y: 0.8, z: 2 }, color: '#556B2F' },
+        { name: 'Heli_Cockpit', type: 'sphere', position: { x: 0, y: 1.4, z: 1.5 }, scale: { x: 0.7, y: 0.6, z: 0.8 }, color: '#87CEEB' },
+        { name: 'Heli_Tail', type: 'cube', position: { x: 0, y: 1.8, z: -2 }, scale: { x: 0.2, y: 0.2, z: 2 }, color: '#556B2F' },
+        { name: 'Heli_Tail_Rotor', type: 'cube', position: { x: 0, y: 1.8, z: -3 }, scale: { x: 1, y: 0.05, z: 0.1 }, color: '#444' },
+        { name: 'Heli_Main_Rotor', type: 'cube', position: { x: 0, y: 2.5, z: 0 }, scale: { x: 5, y: 0.05, z: 0.3 }, color: '#444' },
+        { name: 'Heli_Rotor_Mast', type: 'cylinder', position: { x: 0, y: 2.1, z: 0 }, scale: { x: 0.08, y: 0.8, z: 0.08 }, color: '#333' },
+        { name: 'Heli_Skid_L', type: 'cube', position: { x: -0.6, y: 0.7, z: 0 }, scale: { x: 0.08, y: 0.15, z: 2.5 }, color: '#333' },
+        { name: 'Heli_Skid_R', type: 'cube', position: { x: 0.6, y: 0.7, z: 0 }, scale: { x: 0.08, y: 0.15, z: 2.5 }, color: '#333' },
+      ],
+    };
+  }
+
+  // Horse / Kuda
+  if (p.includes('kuda') || p.includes('horse')) {
+    return {
+      name: 'Horse', type: 'vehicle', vertices: 180, faces: 90,
+      actors: [
+        { name: 'Horse_Body', type: 'cube', position: { x: 0, y: 1.3, z: 0 }, scale: { x: 0.8, y: 0.8, z: 2 }, color: '#8B4513' },
+        { name: 'Horse_Head', type: 'cube', position: { x: 0, y: 2, z: 1.3 }, scale: { x: 0.4, y: 0.6, z: 0.6 }, color: '#A0522D' },
+        { name: 'Horse_Neck', type: 'cube', position: { x: 0, y: 1.9, z: 0.9 }, scale: { x: 0.35, y: 0.7, z: 0.4 }, color: '#8B4513' },
+        { name: 'Horse_Leg_FL', type: 'cylinder', position: { x: -0.25, y: 0.5, z: 0.6 }, scale: { x: 0.1, y: 1, z: 0.1 }, color: '#7B3F00' },
+        { name: 'Horse_Leg_FR', type: 'cylinder', position: { x: 0.25, y: 0.5, z: 0.6 }, scale: { x: 0.1, y: 1, z: 0.1 }, color: '#7B3F00' },
+        { name: 'Horse_Leg_BL', type: 'cylinder', position: { x: -0.25, y: 0.5, z: -0.6 }, scale: { x: 0.1, y: 1, z: 0.1 }, color: '#7B3F00' },
+        { name: 'Horse_Leg_BR', type: 'cylinder', position: { x: 0.25, y: 0.5, z: -0.6 }, scale: { x: 0.1, y: 1, z: 0.1 }, color: '#7B3F00' },
+        { name: 'Horse_Tail', type: 'cube', position: { x: 0, y: 1.5, z: -1.3 }, scale: { x: 0.1, y: 0.8, z: 0.5 }, color: '#1a1a1a' },
+        { name: 'Horse_Mane', type: 'cube', position: { x: 0, y: 2.3, z: 0.5 }, scale: { x: 0.15, y: 0.5, z: 0.6 }, color: '#1a1a1a' },
+      ],
+    };
+  }
+
+  // Zombie
+  if (p.includes('zombie')) {
+    return {
+      name: 'Zombie', type: 'character', vertices: 160, faces: 80,
+      actors: [
+        { name: 'Zombie_Body', type: 'cube', position: { x: 0, y: 1.2, z: 0 }, scale: { x: 0.6, y: 0.9, z: 0.35 }, color: '#4A5D23' },
+        { name: 'Zombie_Head', type: 'sphere', position: { x: 0.1, y: 2, z: 0 }, scale: { x: 0.3, y: 0.35, z: 0.3 }, color: '#7B8B3A' },
+        { name: 'Zombie_Eye_L', type: 'sphere', position: { x: -0.05, y: 2.05, z: 0.25 }, scale: { x: 0.06, y: 0.06, z: 0.06 }, color: '#FF0000' },
+        { name: 'Zombie_Eye_R', type: 'sphere', position: { x: 0.15, y: 2.05, z: 0.25 }, scale: { x: 0.06, y: 0.06, z: 0.06 }, color: '#FF0000' },
+        { name: 'Zombie_Arm_L', type: 'cube', position: { x: -0.55, y: 1.6, z: 0.2 }, scale: { x: 0.15, y: 0.7, z: 0.15 }, color: '#4A5D23' },
+        { name: 'Zombie_Arm_R', type: 'cube', position: { x: 0.55, y: 1.6, z: 0.2 }, scale: { x: 0.15, y: 0.7, z: 0.15 }, color: '#4A5D23' },
+        { name: 'Zombie_Legs', type: 'cube', position: { x: 0, y: 0.35, z: 0 }, scale: { x: 0.5, y: 0.7, z: 0.3 }, color: '#3A4D13' },
+        { name: 'Zombie_Wound', type: 'sphere', position: { x: -0.2, y: 1.1, z: 0.18 }, scale: { x: 0.08, y: 0.08, z: 0.05 }, color: '#8B0000' },
+      ],
+    };
+  }
+
+  // Villager NPC
+  if (p.includes('npc') || p.includes('villager') || p.includes('penduduk')) {
+    return {
+      name: 'Villager NPC', type: 'character', vertices: 140, faces: 70,
+      actors: [
+        { name: 'NPC_Body', type: 'cube', position: { x: 0, y: 1.1, z: 0 }, scale: { x: 0.5, y: 0.8, z: 0.35 }, color: '#4169E1' },
+        { name: 'NPC_Head', type: 'sphere', position: { x: 0, y: 1.8, z: 0 }, scale: { x: 0.25, y: 0.3, z: 0.25 }, color: '#FFE4C4' },
+        { name: 'NPC_Hat', type: 'cube', position: { x: 0, y: 2.1, z: 0 }, scale: { x: 0.35, y: 0.15, z: 0.35 }, color: '#8B4513' },
+        { name: 'NPC_Arm_L', type: 'cube', position: { x: -0.4, y: 1.1, z: 0 }, scale: { x: 0.15, y: 0.6, z: 0.15 }, color: '#4169E1' },
+        { name: 'NPC_Arm_R', type: 'cube', position: { x: 0.4, y: 1.1, z: 0 }, scale: { x: 0.15, y: 0.6, z: 0.15 }, color: '#4169E1' },
+        { name: 'NPC_Legs', type: 'cube', position: { x: 0, y: 0.35, z: 0 }, scale: { x: 0.4, y: 0.7, z: 0.3 }, color: '#654321' },
+        { name: 'NPC_Exclamation', type: 'cube', position: { x: 0, y: 2.5, z: 0 }, scale: { x: 0.15, y: 0.2, z: 0.05 }, color: '#FFD700' },
+      ],
+    };
+  }
+
+  // Shield / Perisai
+  if (p.includes('perisai') || p.includes('shield')) {
+    return {
+      name: 'Shield', type: 'prop', vertices: 48, faces: 24,
+      actors: [
+        { name: 'Shield_Body', type: 'cube', position: { x: 0, y: 1, z: 0 }, scale: { x: 0.7, y: 1.2, z: 0.08 }, color: '#8B0000' },
+        { name: 'Shield_Border', type: 'cube', position: { x: 0, y: 1, z: 0 }, scale: { x: 0.75, y: 1.25, z: 0.05 }, color: '#FFD700' },
+        { name: 'Shield_Emblem', type: 'sphere', position: { x: 0, y: 1, z: 0.05 }, scale: { x: 0.2, y: 0.2, z: 0.1 }, color: '#FFD700' },
+      ],
+    };
+  }
+
+  // Torch / Obor
+  if (p.includes('obor') || p.includes('torch')) {
+    return {
+      name: 'Torch', type: 'prop', vertices: 40, faces: 20,
+      actors: [
+        { name: 'Torch_Handle', type: 'cylinder', position: { x: 0, y: 1, z: 0 }, scale: { x: 0.06, y: 1.5, z: 0.06 }, color: '#8B4513' },
+        { name: 'Torch_Wrap', type: 'cylinder', position: { x: 0, y: 1.7, z: 0 }, scale: { x: 0.1, y: 0.3, z: 0.1 }, color: '#696969' },
+        { name: 'Torch_Flame', type: 'sphere', position: { x: 0, y: 1.95, z: 0 }, scale: { x: 0.15, y: 0.3, z: 0.15 }, color: '#FF4500' },
+        { name: 'Torch_Light', type: 'light_point', position: { x: 0, y: 2.2, z: 0 }, scale: { x: 1, y: 1, z: 1 } },
+      ],
+    };
+  }
+
+  // Rock Formation / Formasi Batu
+  if (p.includes('batu') || p.includes('rock')) {
+    return {
+      name: 'Rock Formation', type: 'environment', vertices: 120, faces: 60,
+      actors: [
+        { name: 'Rock_Main', type: 'sphere', position: { x: 0, y: 0.8, z: 0 }, scale: { x: 1.2, y: 0.8, z: 1 }, color: '#808080' },
+        { name: 'Rock_Side_L', type: 'sphere', position: { x: -0.8, y: 0.5, z: 0.3 }, scale: { x: 0.7, y: 0.5, z: 0.6 }, color: '#707070' },
+        { name: 'Rock_Side_R', type: 'sphere', position: { x: 0.9, y: 0.4, z: -0.2 }, scale: { x: 0.6, y: 0.4, z: 0.5 }, color: '#909090' },
+        { name: 'Rock_Top', type: 'sphere', position: { x: 0.2, y: 1.3, z: -0.1 }, scale: { x: 0.5, y: 0.4, z: 0.4 }, color: '#708090' },
+      ],
+    };
+  }
+
+  // Waterfall / Air Terjun
+  if (p.includes('air terjun') || p.includes('waterfall')) {
+    return {
+      name: 'Waterfall', type: 'environment', vertices: 200, faces: 100,
+      actors: [
+        { name: 'Waterfall_Cliff', type: 'cube', position: { x: -1.5, y: 2.5, z: 0 }, scale: { x: 2, y: 5, z: 3 }, color: '#696969' },
+        { name: 'Waterfall_Cliff2', type: 'cube', position: { x: -2, y: 1.5, z: -1 }, scale: { x: 1.5, y: 3, z: 2 }, color: '#808080' },
+        { name: 'Waterfall_Pool', type: 'cube', position: { x: 0.5, y: 0.1, z: 0 }, scale: { x: 3, y: 0.2, z: 3 }, color: '#1a6eb5' },
+        { name: 'Waterfall_Stream', type: 'cube', position: { x: 0.5, y: 2, z: 0 }, scale: { x: 1.5, y: 3, z: 0.3 }, color: '#4DA6FF' },
+        { name: 'Waterfall_Mist', type: 'sphere', position: { x: 0.5, y: 0.5, z: 0 }, scale: { x: 2, y: 0.5, z: 2 }, color: '#B0E0E6' },
+      ],
+    };
+  }
+
+  // River with Bridge / Sungai dengan Jembatan
+  if (p.includes('sungai') || p.includes('river') || p.includes('jembatan') || p.includes('bridge')) {
+    return {
+      name: 'River with Bridge', type: 'environment', vertices: 240, faces: 120,
+      actors: [
+        { name: 'River_Water', type: 'water', position: { x: 0, y: -0.1, z: 0 }, scale: { x: 20, y: 1, z: 5 } },
+        { name: 'Bridge_Deck', type: 'cube', position: { x: 0, y: 0.3, z: 0 }, scale: { x: 1.5, y: 0.15, z: 5 }, color: '#8B7355' },
+        { name: 'Bridge_Rail_L', type: 'cube', position: { x: -0.6, y: 0.6, z: 0 }, scale: { x: 0.08, y: 0.5, z: 5 }, color: '#8B4513' },
+        { name: 'Bridge_Rail_R', type: 'cube', position: { x: 0.6, y: 0.6, z: 0 }, scale: { x: 0.08, y: 0.5, z: 5 }, color: '#8B4513' },
+        { name: 'Bridge_Post_FL', type: 'cylinder', position: { x: -0.6, y: 0.4, z: 2.3 }, scale: { x: 0.1, y: 0.8, z: 0.1 }, color: '#8B4513' },
+        { name: 'Bridge_Post_FR', type: 'cylinder', position: { x: 0.6, y: 0.4, z: 2.3 }, scale: { x: 0.1, y: 0.8, z: 0.1 }, color: '#8B4513' },
+        { name: 'Bridge_Post_BL', type: 'cylinder', position: { x: -0.6, y: 0.4, z: -2.3 }, scale: { x: 0.1, y: 0.8, z: 0.1 }, color: '#8B4513' },
+        { name: 'Bridge_Post_BR', type: 'cylinder', position: { x: 0.6, y: 0.4, z: -2.3 }, scale: { x: 0.1, y: 0.8, z: 0.1 }, color: '#8B4513' },
+      ],
+    };
+  }
+
+  // === ENVIRONMENT GENERATORS ===
+
+  // Forest / Hutan
+  if (p.includes('hutan') || p.includes('forest')) {
+    const trees: GeneratedModel['actors'] = [];
+    const treeTypes = ['oak', 'pine'];
+    for (let i = 0; i < 12; i++) {
+      const x = (Math.random() - 0.5) * 20;
+      const z = (Math.random() - 0.5) * 20;
+      const isPine = i % 2 === 0;
+      trees.push({ name: `Forest_Tree_${i}`, type: 'cylinder', position: { x, y: 1.5, z }, scale: { x: 0.3, y: 3, z: 0.3 }, color: '#8B4513' });
+      if (isPine) {
+        trees.push({ name: `Forest_Leaves_${i}_1`, type: 'cone', position: { x, y: 4, z }, scale: { x: 1.2, y: 1.5, z: 1.2 }, color: '#006400' });
+        trees.push({ name: `Forest_Leaves_${i}_2`, type: 'cone', position: { x, y: 5, z }, scale: { x: 0.9, y: 1.2, z: 0.9 }, color: '#228B22' });
+      } else {
+        trees.push({ name: `Forest_Canopy_${i}`, type: 'sphere', position: { x, y: 4.2, z }, scale: { x: 2, y: 1.8, z: 2 }, color: '#228B22' });
+      }
+    }
+    // Add foliage
+    trees.push({ name: 'Forest_Foliage', type: 'foliage', position: { x: 0, y: 0, z: 0 }, scale: { x: 20, y: 1, z: 20 } });
+    return { name: 'Forest', type: 'environment', vertices: 960, faces: 480, actors: trees };
+  }
+
   // Generic fallback - generate a basic cube model
   const name = prompt.replace(/^(buat|create|generate|tambah|add)\s*(model\s*(3d)?|3d)?\s*/i, '').trim() || 'Object';
   return {
