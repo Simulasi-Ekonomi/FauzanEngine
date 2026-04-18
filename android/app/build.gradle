@@ -1,43 +1,32 @@
-// NeoEngine Android App - build.gradle
-// Fauzan Engine v1.0 - ARM64-v8a NDK Build
-
 plugins {
     id 'com.android.application'
-    id 'org.jetbrains.kotlin.android'
 }
 
 android {
-    namespace 'com.neoengine.core'
+    namespace 'com.neoengine.editor'
     compileSdk 34
 
     defaultConfig {
-        applicationId "com.neoengine.core"
-        minSdk 24
+        applicationId "com.neoengine.editor"
+        minSdk 26
         targetSdk 34
         versionCode 1
         versionName "1.0.0"
 
-        ndk {
-            abiFilters 'arm64-v8a'
-        }
-
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        
         externalNativeBuild {
             cmake {
-                cppFlags '-std=c++23 -O2 -fno-exceptions -fno-rtti -DANDROID -DNEO_PLATFORM_ANDROID'
-                arguments '-DANDROID_STL=c++_shared',
-                          '-DANDROID_TOOLCHAIN=clang',
-                          '-DANDROID_PLATFORM=android-24'
+                cppFlags "-std=c++23 -O2"
+                abiFilters "arm64-v8a", "armeabi-v7a", "x86_64"
             }
         }
     }
 
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            ndk {
-                debugSymbolLevel 'SYMBOL_TABLE'
-            }
         }
         debug {
             debuggable true
@@ -47,8 +36,8 @@ android {
 
     externalNativeBuild {
         cmake {
-            path file('src/main/jni/CMakeLists.txt')
-            version '3.22.1'
+            path "src/main/jni/CMakeLists.txt"
+            version "3.22.1"
         }
     }
 
@@ -57,23 +46,15 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = '17'
-    }
-
     sourceSets {
         main {
-            jniLibs.srcDirs = ['src/main/jniLibs']
+            assets.srcDirs = ['src/main/assets']
         }
-    }
-
-    packagingOptions {
-        pickFirst '**/libc++_shared.so'
     }
 }
 
 dependencies {
-    implementation 'androidx.core:core-ktx:1.12.0'
     implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'androidx.webkit:webkit:1.8.0'
     implementation 'com.google.android.material:material:1.11.0'
 }
