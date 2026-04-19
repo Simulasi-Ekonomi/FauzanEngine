@@ -242,6 +242,11 @@ class AriesBrainClass {
     }
   }
 
+}
+
+export const AriesBrain = new AriesBrainClass();
+export default AriesBrain;
+
 // LEGACY EXPORTS
 export async function storeDocument(filename: string, content: string): Promise<void> {
   await AriesBrain.chat(`Simpan dokumen "${filename}": ${content.substring(0, 500)}`);
