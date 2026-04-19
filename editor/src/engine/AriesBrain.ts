@@ -245,3 +245,29 @@ class AriesBrainClass {
 
 export const AriesBrain = new AriesBrainClass();
 export default AriesBrain;
+
+// =============================================
+// LEGACY EXPORTS - untuk kompatibilitas file lama
+// =============================================
+
+export async function storeDocument(content: string, filename: string): Promise<void> {
+  await AriesBrain.chat(`Simpan dokumen "${filename}": ${content.substring(0, 500)}`);
+}
+
+export async function processDocumentForAries(content: string): Promise<string> {
+  let result = '';
+  AriesBrain.onToken = (_, token) => { result += token; };
+  await AriesBrain.chat(`Analisis dokumen ini: ${content.substring(0, 1000)}`);
+  return result;
+}
+
+export async function processWithAriesBrain(prompt: string): Promise<string> {
+  let result = '';
+  AriesBrain.onToken = (_, token) => { result += token; };
+  await AriesBrain.chat(prompt);
+  return result;
+}
+
+export async function queryLLM(prompt: string): Promise<string> {
+  return processWithAriesBrain(prompt);
+}
