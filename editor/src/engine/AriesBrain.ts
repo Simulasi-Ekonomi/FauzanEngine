@@ -241,33 +241,36 @@ class AriesBrainClass {
       return { status: 'offline' };
     }
   }
-}
 
-export const AriesBrain = new AriesBrainClass();
-export default AriesBrain;
-
-// =============================================
-// LEGACY EXPORTS - untuk kompatibilitas file lama
-// =============================================
-
-export async function storeDocument(content: string, filename: string): Promise<void> {
+// LEGACY EXPORTS
+export async function storeDocument(filename: string, content: string): Promise<void> {
   await AriesBrain.chat(`Simpan dokumen "${filename}": ${content.substring(0, 500)}`);
 }
 
-export async function processDocumentForAries(content: string): Promise<string> {
+export async function processDocumentForAries(
+  filename: string, content: string
+): Promise<{ response: string; actions: Record<string, unknown>[] }> {
   let result = '';
-  AriesBrain.onToken = (_, token) => { result += token; };
-  await AriesBrain.chat(`Analisis dokumen ini: ${content.substring(0, 1000)}`);
-  return result;
+  const orig = AriesBrain.onToken;
+  AriesBrain.onToken = (_a: string, token: string) => { result += token; };
+  await AriesBrain.chat(`Analisis dokumen "${filename}": ${content.substring(0, 1000)}`);
+  AriesBrain.onToken = orig;
+  return { response: result, actions: [] };
 }
 
-export async function processWithAriesBrain(prompt: string): Promise<string> {
+export async function processWithAriesBrain(
+  prompt: string, _context?: unknown
+): Promise<{ response: string; actions: Record<string, unknown>[] }> {
   let result = '';
-  AriesBrain.onToken = (_, token) => { result += token; };
+  const orig = AriesBrain.onToken;
+  AriesBrain.onToken = (_a: string, token: string) => { result += token; };
   await AriesBrain.chat(prompt);
-  return result;
+  AriesBrain.onToken = orig;
+  return { response: result, actions: [] };
 }
 
-export async function queryLLM(prompt: string): Promise<string> {
-  return processWithAriesBrain(prompt);
+export async function queryLLM(
+  prompt: string, _context?: unknown
+): Promise<{ response: string; actions: Record<string, unknown>[] }> {
+  return processWithAriesBrain(prompt, _context);
 }
