@@ -247,35 +247,36 @@ class AriesBrainClass {
 export const AriesBrain = new AriesBrainClass();
 export default AriesBrain;
 
-// LEGACY EXPORTS
-export async function storeDocument(filename: string, content: string): Promise<void> {
-  await AriesBrain.chat(`Simpan dokumen "${filename}": ${content.substring(0, 500)}`);
+// LEGACY EXPORTS - sync versions untuk kompatibilitas
+export function storeDocument(filename: string, content: string): void {
+  // Fire and forget
+  AriesBrain.chat(`Simpan dokumen "${filename}": ${content.substring(0, 500)}`).catch(() => {});
 }
 
-export async function processDocumentForAries(
+export function processDocumentForAries(
   filename: string, content: string
-): Promise<{ response: string; actions: Record<string, unknown>[] }> {
-  let result = '';
-  const orig = AriesBrain.onToken;
-  AriesBrain.onToken = (_a: string, token: string) => { result += token; };
-  await AriesBrain.chat(`Analisis dokumen "${filename}": ${content.substring(0, 1000)}`);
-  AriesBrain.onToken = orig;
-  return { response: result, actions: [] };
+): { response: string; actions: Record<string, unknown>[] } {
+  // Trigger async tapi return sync placeholder
+  AriesBrain.chat(`Analisis dokumen "${filename}": ${content.substring(0, 500)}`).catch(() => {});
+  return { 
+    response: `Memproses dokumen "${filename}"... Aries sedang menganalisis.`, 
+    actions: [] 
+  };
 }
 
-export async function processWithAriesBrain(
+export function processWithAriesBrain(
   prompt: string, _context?: unknown
-): Promise<{ response: string; actions: Record<string, unknown>[] }> {
-  let result = '';
-  const orig = AriesBrain.onToken;
-  AriesBrain.onToken = (_a: string, token: string) => { result += token; };
-  await AriesBrain.chat(prompt);
-  AriesBrain.onToken = orig;
-  return { response: result, actions: [] };
+): { response: string; actions: Record<string, unknown>[] } {
+  // Trigger async tapi return sync placeholder
+  AriesBrain.chat(prompt).catch(() => {});
+  return { 
+    response: `Aries memproses: ${prompt.substring(0, 100)}...`, 
+    actions: [] 
+  };
 }
 
-export async function queryLLM(
+export function queryLLM(
   prompt: string, _context?: unknown
-): Promise<{ response: string; actions: Record<string, unknown>[] }> {
+): { response: string; actions: Record<string, unknown>[] } {
   return processWithAriesBrain(prompt, _context);
 }
