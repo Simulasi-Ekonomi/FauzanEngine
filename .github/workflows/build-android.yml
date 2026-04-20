@@ -29,11 +29,11 @@ jobs:
       with:
         node-version: '20'
         cache: 'npm'
-        cache-dependency-path: FauzanEngine/editor/package-lock.json
+        cache-dependency-path: editor/package-lock.json
 
     - name: Build Editor (React)
       run: |
-        cd FauzanEngine/editor
+        cd editor
         npm ci
         npm run build
         mkdir -p ../android/app/src/main/assets/editor
@@ -46,14 +46,14 @@ jobs:
 
     - name: Build Debug APK
       run: |
-        cd FauzanEngine/android
+        cd android
         gradle assembleDebug --no-daemon
 
     - name: Upload Debug APK
       uses: actions/upload-artifact@v4
       with:
         name: NeoEngine-Debug-APK
-        path: FauzanEngine/android/app/build/outputs/apk/debug/app-debug.apk
+        path: android/app/build/outputs/apk/debug/app-debug.apk
         retention-days: 30
 
   build-release:
@@ -78,11 +78,11 @@ jobs:
       with:
         node-version: '20'
         cache: 'npm'
-        cache-dependency-path: FauzanEngine/editor/package-lock.json
+        cache-dependency-path: editor/package-lock.json
 
     - name: Build Editor
       run: |
-        cd FauzanEngine/editor
+        cd editor
         npm ci
         npm run build
         mkdir -p ../android/app/src/main/assets/editor
@@ -95,12 +95,12 @@ jobs:
 
     - name: Build Release APK
       run: |
-        cd FauzanEngine/android
+        cd android
         gradle assembleRelease --no-daemon
 
     - name: Upload Release APK
       uses: actions/upload-artifact@v4
       with:
         name: NeoEngine-Release-APK
-        path: FauzanEngine/android/app/build/outputs/apk/release/app-release*.apk
+        path: android/app/build/outputs/apk/release/app-release*.apk
         retention-days: 90
