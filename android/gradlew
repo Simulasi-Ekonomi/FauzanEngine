@@ -1,6 +1,9 @@
 #!/usr/bin/env sh
+set -e
 APP_HOME=$(cd "$(dirname "$0")" && pwd)
-JAVA_OPTS=""
-GRADLE_OPTS="${GRADLE_OPTS:-"-Dfile.encoding=UTF-8 -Dkotlin.daemon.jvm.options=-Xmx2g"}"
-exec "$APP_HOME/gradle/wrapper/gradle-wrapper" "$@" 2>/dev/null || \
-  java -jar "$APP_HOME/gradle/wrapper/gradle-wrapper.jar" "$@"
+DEFAULT_JVM_OPTS='"-Xmx64m" "-Xms64m"'
+JAVA_HOME_CANDIDATE=$(dirname $(dirname $(readlink -f $(which java) 2>/dev/null) 2>/dev/null) 2>/dev/null)
+if [ -n "$JAVA_HOME_CANDIDATE" ]; then JAVA_HOME="$JAVA_HOME_CANDIDATE"; fi
+JAVACMD="${JAVA_HOME}/bin/java"
+GRADLE_WRAPPER_JAR="$APP_HOME/gradle/wrapper/gradle-wrapper.jar"
+exec "$JAVACMD" $DEFAULT_JVM_OPTS -cp "$GRADLE_WRAPPER_JAR" org.gradle.wrapper.GradleWrapperMain "$@"
