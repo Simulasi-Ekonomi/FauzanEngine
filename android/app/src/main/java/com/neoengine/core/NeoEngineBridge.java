@@ -1,35 +1,56 @@
 package com.neoengine.core;
 
-/**
- * NeoEngine JNI Bridge - Java side
- * Provides native method declarations for C++ engine communication
- */
+import android.content.Context;
+import android.webkit.JavascriptInterface;
+import android.webkit.WebView;
+import android.os.Build;
+import android.util.Log;
+
 public class NeoEngineBridge {
 
+    private Context context;
+    private WebView webView;
+    private static final String TAG = "NeoEngineBridge";
+
     static {
-        System.loadLibrary("neo_core");
+        try {
+            System.loadLibrary("neo_core");
+        } catch (UnsatisfiedLinkError e) {
+            Log.w(TAG, "Native lib not found: " + e.getMessage());
+        }
     }
 
-    // Engine lifecycle
-    public static native boolean nativeInit(Object activity, Object assetManager,
-                                            int screenWidth, int screenHeight);
-    public static native void nativeShutdown();
-    public static native void nativeTick(float deltaTime);
-    public static native void nativeRender();
+    public void init(Context ctx) {
+        this.context = ctx;
+    }
 
-    // Input
-    public static native void nativeTouchEvent(int action, float x, float y, int pointerId);
-    public static native void nativeKeyEvent(int keyCode, int action);
-    public static native void nativeSensorEvent(int sensorType, float x, float y, float z);
+    public void setWebView(WebView wv) {
+        this.webView = wv;
+    }
 
-    // Telemetry (for Aries AI)
-    public static native float nativeGetFPS();
-    public static native float nativeGetCPUTemp();
-    public static native void nativeSetThrottleLevel(int level);
-    public static native String nativeGetTelemetryJSON();
+    public void shutdown() {
+        Log.d(TAG, "NeoEngineBridge shutdown");
+    }
 
-    // Scene management
-    public static native int nativeGetActorCount();
-    public static native boolean nativeLoadScene(String scenePath);
-    public static native boolean nativeSaveScene(String scenePath);
+    @JavascriptInterface
+    public String getEngineVersion() {
+        return "FauzanEngine v2.0";
+    }
+
+    @JavascriptInterface
+    public String getDeviceInfo() {
+        return "{\"model\":\"" + Build.MODEL +
+               "\",\"sdk\":" + Build.VERSION.SDK_INT +
+               ",\"arch\":\"" + Build.SUPPORTED_ABIS[0] + "\"}";
+    }
+
+    @JavascriptInterface
+    public void log(String message) {
+        Log.d(TAG, message);
+    }
+
+    @JavascriptInterface
+    public boolean isAndroid() {
+        return true;
+    }
 }
