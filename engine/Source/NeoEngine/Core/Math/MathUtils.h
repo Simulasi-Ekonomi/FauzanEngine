@@ -4,7 +4,7 @@
 
 namespace Math {
     inline float SafeSqrt(float v) { return v <= 0.0f ? 0.0f : std::sqrt(v); }
-    
+
     inline bool IsNearlyZero(float Value, float ErrorTolerance = EPSILON) {
         return std::abs(Value) <= ErrorTolerance;
     }

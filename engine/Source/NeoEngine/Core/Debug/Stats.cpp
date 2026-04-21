@@ -1,3 +1,4 @@
+#include <cassert>
 #include "Stats.h"
 
 static uint64_t GFrameCount = 0;

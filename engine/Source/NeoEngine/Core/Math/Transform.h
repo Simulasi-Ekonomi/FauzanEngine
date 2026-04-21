@@ -1,21 +1,36 @@
 #pragma once
-#include "Vector3.h"
-#include "Quaternion.h"
-#include "Matrix4.h"
 
-struct Transform {
-    Vector3 Position;
-    Quaternion Rotation;
-    Vector3 Scale;
+#include "Vec4.h"
+#include "Mat4.h"
 
-    Transform() 
-        : Position(0.0f, 0.0f, 0.0f)
-        , Rotation(Quaternion::Identity())
-        , Scale(1.0f, 1.0f, 1.0f) 
-    {}
+namespace Neo
+{
 
-    Matrix4 ToMatrix() const {
-        // Gabungan translasi, rotasi, dan skala ke Matrix4
-        return Matrix4::Identity(); 
+struct Transform
+{
+
+    Vec4 position;
+    Vec4 rotation;
+    Vec4 scale;
+
+    Transform()
+        : position(0,0,0),
+          rotation(0,0,0),
+          scale(1,1,1)
+    {
     }
+
+    Mat4 ToMatrix() const
+    {
+
+        Mat4 m;
+
+        m.rows[3] = Vec4(position.x, position.y, position.z, 1.0f);
+
+        return m;
+
+    }
+
 };
+
+}

@@ -1,7 +1,17 @@
 #pragma once
 
-class CrashHandler {
+namespace NeoEngine
+{
+
+class CrashHandler
+{
 public:
+
     static void Install();
-    static void HandleFatal(const char* reason);
+
+private:
+
+    static void SignalHandler(int signal);
 };
+
+}

@@ -1,17 +1,41 @@
 #pragma once
-#include <cstddef>
-#include <memory>
+#include <cstdint>
+#include <cstdlib>
 
-class LinearAllocator {
+class LinearAllocator
+{
 public:
-    LinearAllocator(size_t size);
-    ~LinearAllocator() = default;
-    
-    void* Allocate(size_t size);
-    void Reset();
+
+    LinearAllocator(size_t size)
+    {
+        memory = malloc(size);
+        capacity = size;
+    }
+
+    ~LinearAllocator()
+    {
+        free(memory);
+    }
+
+    void* Allocate(size_t size)
+    {
+        if(offset + size > capacity)
+            return nullptr;
+
+        void* ptr = (uint8_t*)memory + offset;
+        offset += size;
+
+        return ptr;
+    }
+
+    void Reset()
+    {
+        offset = 0;
+    }
 
 private:
-    std::unique_ptr<char[]> Buffer;
-    size_t Capacity;
-    size_t Offset;
+
+    void* memory;
+    size_t capacity;
+    size_t offset{0};
 };

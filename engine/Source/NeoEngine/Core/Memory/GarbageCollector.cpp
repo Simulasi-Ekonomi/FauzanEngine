@@ -1,5 +1,7 @@
+#include <cassert>
 #include "GarbageCollector.h"
 #include "../Object/ObjectRegistry.h"
+#include "../Object/ObjectBase.h"
 #include <android/log.h>
 
 void GarbageCollector::Collect() {

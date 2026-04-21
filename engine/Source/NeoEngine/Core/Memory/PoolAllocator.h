@@ -1,19 +1,36 @@
 #pragma once
+
 #include <cstddef>
-#include <memory>
 #include <vector>
 
-class PoolAllocator {
+namespace NeoEngine {
+
+class PoolAllocator
+{
 public:
+
     PoolAllocator(size_t blockSize, size_t blockCount);
-    ~PoolAllocator() = default;
-    
+
     void* Allocate();
+
     void Free(void* ptr);
 
 private:
+
+    struct FreeBlock
+    {
+        FreeBlock* next;
+    };
+
     size_t BlockSize;
-    std::vector<void*> FreeList;
-    // Smart pointer manages the raw memory blocks
-    std::vector<std::unique_ptr<char[]>> OwnedBlocks;
+    size_t BlockCount;
+
+    void* memory = nullptr;
+
+    FreeBlock* freeList = nullptr;
+
+    void Initialize();
 };
+
+}
+

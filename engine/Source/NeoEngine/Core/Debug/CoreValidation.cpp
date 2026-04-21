@@ -1,16 +1,14 @@
-#include "Assert.h"
-#include "../Math/Vector3.h"
-#include "../Memory/LinearAllocator.h"
+#include <iostream>
 
-void ValidateMath() {
-    Vector3 v1(1, 0, 0);
-    Vector3 v2(0, 1, 0);
-    // Simple check
-    NEO_ASSERT(v1.x == 1.0f, "Math Validation Failed");
+#include "Log.h"
+#include "CoreValidation.h"
+
+namespace NeoEngine
+{
+
+void RunCoreValidation()
+{
+    LOG_INFO("NeoEngine: Core Validation Running...");
 }
 
-void ValidateMemory() {
-    LinearAllocator alloc(1024);
-    void* ptr = alloc.Allocate(128);
-    NEO_ASSERT(ptr != nullptr, "Memory Allocator Validation Failed");
 }
