@@ -1,5 +1,5 @@
 #include "android_native_app_glue.h"
-#include "../../Core/Engine.h"
+#include "Core/Engine.h"
 #include <android/log.h>
 
 #define LOG_TAG "NeoEngine"

@@ -4,7 +4,7 @@
 #include <string>
 
 #include "GLTFMesh.h"
-#include "../../Core/Geometry/MeshData.h"
+#include "Core/Geometry/MeshData.h"
 
 namespace NeoEngine {
 

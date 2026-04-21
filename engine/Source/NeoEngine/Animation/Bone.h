@@ -2,7 +2,7 @@
 
 #include <string>
 #include <vector>
-#include "../Core/Math/Mat4.h"
+#include "Core/Math/Mat4.h"
 
 namespace NeoEngine
 {

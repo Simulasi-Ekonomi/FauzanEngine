@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../Core/Geometry/MeshData.h"
+#include "Core/Geometry/MeshData.h"
 
 namespace NeoEngine {
 
