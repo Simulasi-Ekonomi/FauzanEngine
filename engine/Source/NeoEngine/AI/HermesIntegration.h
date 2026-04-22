@@ -36,7 +36,7 @@ private:
     void* modelHandle;
     float temperature;
     int maxTokens;
-    std::string hermesExecutablePath;
+    std::string hermesEndpoint;   // <-- tambahan untuk HTTP mode
 };
 
 }

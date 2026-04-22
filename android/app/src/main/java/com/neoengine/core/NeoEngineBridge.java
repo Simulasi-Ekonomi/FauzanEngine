@@ -59,7 +59,7 @@ public class NeoEngineBridge {
 
     // ========== LiteRT Integration ==========
     private static LiteRTManager liteRTManager;
-    private static Context appContext;
+    public static Context appContext;  // <-- diubah menjadi public
 
     public static void initLiteRT(String modelPath) {
         if (liteRTManager == null && appContext != null) {

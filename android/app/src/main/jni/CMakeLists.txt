@@ -84,8 +84,9 @@ target_include_directories(neo_core PUBLIC
 
 find_library(log-lib log)
 find_library(android-lib android)
+find_library(curl-lib curl)   # <-- tambahkan libcurl
 
-target_link_libraries(neo_core ${log-lib} ${android-lib})
+target_link_libraries(neo_core ${log-lib} ${android-lib} ${curl-lib})
 
 target_compile_definitions(neo_core PRIVATE
     ANDROID
