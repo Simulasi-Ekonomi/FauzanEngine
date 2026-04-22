@@ -5,6 +5,10 @@ import android.webkit.JavascriptInterface;
 import android.webkit.WebView;
 import android.os.Build;
 import android.util.Log;
+import kotlinx.coroutines.BuildersKt;
+import kotlinx.coroutines.Dispatchers;
+import kotlinx.coroutines.BuildersKt;
+import kotlinx.coroutines.Dispatchers;
 
 public class NeoEngineBridge {
 
@@ -22,6 +26,8 @@ public class NeoEngineBridge {
 
     public void init(Context ctx) {
         this.context = ctx;
+        appContext = ctx.getApplicationContext();
+        appContext = ctx.getApplicationContext();
     }
 
     public void setWebView(WebView wv) {
@@ -52,5 +58,73 @@ public class NeoEngineBridge {
     @JavascriptInterface
     public boolean isAndroid() {
         return true;
+    }
+
+    // ========== LiteRT Integration ==========
+    private static LiteRTManager liteRTManager;
+    private static Context appContext;
+
+    public static void initLiteRT(String modelPath) {
+        if (liteRTManager == null && appContext != null) {
+            liteRTManager = new LiteRTManager(appContext);
+        }
+        if (liteRTManager != null) {
+            new Thread(() -> {
+                boolean success = BuildersKt.runBlocking(
+                    Dispatchers.getIO(),
+                    (scope, cont) -> liteRTManager.initialize(modelPath, cont)
+                );
+                // Optional: panggil native callback
+            }).start();
+        }
+    }
+
+    public static String sendPrompt(String prompt) {
+        if (liteRTManager == null) return "";
+        return BuildersKt.runBlocking(
+            Dispatchers.getIO(),
+            (scope, cont) -> liteRTManager.sendMessageSync(prompt, cont)
+        );
+    }
+
+    public static void shutdownLiteRT() {
+        if (liteRTManager != null) {
+            liteRTManager.shutdown();
+            liteRTManager = null;
+        }
+    }
+
+    // ========== LiteRT Integration ==========
+    private static LiteRTManager liteRTManager;
+    private static Context appContext;
+
+    public static void initLiteRT(String modelPath) {
+        if (liteRTManager == null && appContext != null) {
+            liteRTManager = new LiteRTManager(appContext);
+        }
+        if (liteRTManager != null) {
+            new Thread(() -> {
+                boolean success = BuildersKt.runBlocking(
+                    Dispatchers.getIO(),
+                    (scope, cont) -> liteRTManager.initialize(modelPath, cont)
+                );
+                // Optional: native callback
+            }).start();
+        }
+    }
+
+    public static String sendPrompt(String prompt) {
+        if (liteRTManager == null) return "";
+        return BuildersKt.runBlocking(
+            Dispatchers.getIO(),
+            (scope, cont) -> liteRTManager.sendMessageSync(prompt, cont)
+        );
+    }
+
+    public static void shutdownLiteRT() {
+        if (liteRTManager != null) {
+            liteRTManager.shutdown();
+            liteRTManager = null;
+        }
     }
 }

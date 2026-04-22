@@ -45,6 +45,38 @@ public class NeoEngineActivity extends Activity {
         // Init C++ bridge
         bridge = new NeoEngineBridge();
         bridge.init(this);
+        // Copy LiteRT model from sdcard to internal storage
+        java.io.File modelFile = new java.io.File("/sdcard/gemma4/gemma4_2b_v09_obfus_fix_all_modalities_thinking.litertlm");
+        java.io.File destFile = new java.io.File(getFilesDir(), "gemma4.litertlm");
+        if (!destFile.exists() && modelFile.exists()) {
+            try {
+                java.io.FileInputStream fis = new java.io.FileInputStream(modelFile);
+                java.io.FileOutputStream fos = new java.io.FileOutputStream(destFile);
+                byte[] buf = new byte[8192];
+                int len;
+                while ((len = fis.read(buf)) > 0) fos.write(buf, 0, len);
+                fis.close(); fos.close();
+            } catch (Exception e) { e.printStackTrace(); }
+        }
+        if (destFile.exists()) {
+            NeoEngineBridge.initLiteRT(destFile.getAbsolutePath());
+        }
+        // Copy LiteRT model from sdcard to internal storage
+        java.io.File modelFile = new java.io.File("/sdcard/gemma4/gemma4_2b_v09_obfus_fix_all_modalities_thinking.litertlm");
+        java.io.File destFile = new java.io.File(getFilesDir(), "gemma4.litertlm");
+        if (!destFile.exists() && modelFile.exists()) {
+            try {
+                java.io.FileInputStream fis = new java.io.FileInputStream(modelFile);
+                java.io.FileOutputStream fos = new java.io.FileOutputStream(destFile);
+                byte[] buf = new byte[8192];
+                int len;
+                while ((len = fis.read(buf)) > 0) fos.write(buf, 0, len);
+                fis.close(); fos.close();
+            } catch (Exception e) { e.printStackTrace(); }
+        }
+        if (destFile.exists()) {
+            NeoEngineBridge.initLiteRT(destFile.getAbsolutePath());
+        }
         
         // Expose bridge to JS
         webView.addJavascriptInterface(bridge, "NeoEngineBridge");
@@ -84,6 +116,7 @@ public class NeoEngineActivity extends Activity {
     @Override
     protected void onDestroy() {
         if (bridge != null) bridge.shutdown();
+        NeoEngineBridge.shutdownLiteRT();
         if (webView != null) {
             webView.destroy();
             webView = null;
