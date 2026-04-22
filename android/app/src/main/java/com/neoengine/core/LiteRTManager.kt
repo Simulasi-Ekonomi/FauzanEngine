@@ -119,6 +119,52 @@ class NeoEngineToolSet : ToolSet {
         }
     }
 
+    // =========================================================
+    // ADVANCED ASSET GENERATION TOOLS (AI Pipeline)
+    // =========================================================
+    @Tool(description = "Generate a detailed 3D asset from text description (character, building, terrain, prop)")
+    fun generate3DAsset(
+        @ToolParam(description = "Description of the 3D model to generate") description: String,
+        @ToolParam(description = "Type: character, building, terrain, prop, vehicle") assetType: String
+    ): String {
+        notifyWebView("GENERATE_3D", """{"description":"$description","type":"$assetType"}""")
+        return "Generating $assetType: '$description' via AI pipeline. Please wait..."
+    }
+
+    @Tool(description = "Generate a 2D sprite or texture from text prompt")
+    fun generateSprite(
+        @ToolParam(description = "Description of the sprite/texture") description: String,
+        @ToolParam(description = "Width in pixels") width: Int,
+        @ToolParam(description = "Height in pixels") height: Int,
+        @ToolParam(description = "Style (e.g., pixel art, realistic, cartoon)") style: String
+    ): String {
+        notifyWebView("GENERATE_SPRITE", """{"description":"$description","width":$width,"height":$height,"style":"$style"}""")
+        return "Sprite generation requested: '$description' (${width}x${height}, $style)"
+    }
+
+    @Tool(description = "Generate an animated character with skeleton and animations")
+    fun generateAnimatedCharacter(
+        @ToolParam(description = "Description of the character") description: String,
+        @ToolParam(description = "Animation set (idle, walk, run, attack, jump)") animations: String
+    ): String {
+        notifyWebView("GENERATE_ANIMATED_CHAR", """{"description":"$description","animations":"$animations"}""")
+        return "Animated character generation started: '$description' with animations [$animations]"
+    }
+
+    @Tool(description = "Create an NPC with AI behavior tree")
+    fun createNPC(
+        @ToolParam(description = "NPC name") name: String,
+        @ToolParam(description = "NPC role (merchant, guard, quest_giver, enemy)") role: String,
+        @ToolParam(description = "Initial dialogue or behavior description") behavior: String,
+        @ToolParam(description = "X position") x: Float,
+        @ToolParam(description = "Y position") y: Float,
+        @ToolParam(description = "Z position") z: Float
+    ): String {
+        notifyWebView("CREATE_NPC", """{"name":"$name","role":"$role","behavior":"$behavior","x":$x,"y":$y,"z":$z}""")
+        return "NPC '$name' ($role) created at ($x,$y,$z) with behavior: $behavior"
+    }
+
+    // Helper: kirim command ke JavaScript di WebView
     private fun notifyWebView(action: String, data: String) {
         LiteRTManager.webViewRef?.get()?.let { wv ->
             wv.post {
@@ -172,6 +218,10 @@ class LiteRTManager(private val context: Context) {
             - createGameWorld: buat dunia game lengkap
             - setPlayMode: play/stop simulasi
             - getEngineMetrics: cek performa engine
+            - generate3DAsset: buat model 3D realistis (karakter, gedung, terrain, dll)
+            - generateSprite: buat sprite 2D / tekstur
+            - generateAnimatedCharacter: buat karakter dengan animasi
+            - createNPC: buat NPC dengan behavior
 
             Cara kerja:
             - Dengarkan perintah user dalam Bahasa Indonesia
@@ -265,3 +315,16 @@ class LiteRTManager(private val context: Context) {
         engine = null
     }
 }
+
+    // =========================================================
+    // MASSIVE WORLD GENERATION TOOL
+    // =========================================================
+    @Tool(description = "Generate a massive open world map with thousands of objects (trees, buildings, NPCs)")
+    fun generateWorldMap(
+        @ToolParam(description = "Description of the world (e.g., 'medieval fantasy with dense forest and villages')") description: String,
+        @ToolParam(description = "World size in kilometers (e.g., 4 for 4x4 km)") sizeKm: Float,
+        @ToolParam(description = "Object density: low, medium, high, ultra") density: String
+    ): String {
+        notifyWebView("GENERATE_WORLD_MAP", """{"description":"$description","sizeKm":$sizeKm,"density":"$density"}""")
+        return "Generating ${sizeKm}x${sizeKm} km world: '$description' (density: $density). This may take a moment..."
+    }
