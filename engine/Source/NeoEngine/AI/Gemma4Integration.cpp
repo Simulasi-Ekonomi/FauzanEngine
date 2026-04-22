@@ -1,20 +1,29 @@
 #include "Gemma4Integration.h"
 #include <jni.h>
 #include <android/log.h>
+#include <chrono>
+#include <thread>
 
 #define LOG_TAG "Gemma4Integration"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 
-// Deklarasi fungsi helper dari Platform/Android
 extern JNIEnv* GetJNIEnv();
 
 namespace NeoEngine {
+
+static bool g_liteRTReady = false;
+
+// Callback dari Java
+extern "C" JNIEXPORT void JNICALL
+Java_com_neoengine_core_NeoEngineBridge_nativeOnLiteRTInitialized(JNIEnv* env, jclass, jboolean success) {
+    g_liteRTReady = success;
+    LOGI("LiteRT initialization callback: %s", success ? "SUCCESS" : "FAILED");
+}
 
 Gemma4Integration::Gemma4Integration() : ready(false) {}
 Gemma4Integration::~Gemma4Integration() { Shutdown(); }
 
 bool Gemma4Integration::Initialize(Gemma4ModelSize size) {
-    // Path model (sesuaikan dengan package name)
     const char* modelPath = "/data/data/com.neoengine.editor/files/gemma4.litertlm";
 
     JNIEnv* env = GetJNIEnv();
@@ -39,7 +48,17 @@ bool Gemma4Integration::Initialize(Gemma4ModelSize size) {
     env->CallStaticVoidMethod(bridgeClass, initMethod, jPath);
     env->DeleteLocalRef(jPath);
 
-    // Untuk saat ini, anggap inisialisasi asynchronous akan berhasil
+    // Tunggu callback dengan timeout 30 detik
+    auto start = std::chrono::steady_clock::now();
+    while (!g_liteRTReady) {
+        if (std::chrono::steady_clock::now() - start > std::chrono::seconds(30)) {
+            LOGI("LiteRT initialization timeout");
+            ready = false;
+            return false;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+
     ready = true;
     return true;
 }
@@ -82,12 +101,10 @@ Gemma4Response Gemma4Integration::GenerateText(const std::string& prompt, int ma
 }
 
 Gemma4Response Gemma4Integration::Summarize(const std::string& text) {
-    // Belum diimplementasikan
     return {"", 0.0f, {}, 0};
 }
 
 std::vector<float> Gemma4Integration::GetEmbeddings(const std::string& text) {
-    // Belum diimplementasikan
     return {};
 }
 
@@ -97,8 +114,6 @@ std::string Gemma4Integration::GetModelInfo() const {
     return "Gemma4 via LiteRT-LM";
 }
 
-void Gemma4Integration::SetModelSize(Gemma4ModelSize size) {
-    // Ukuran model ditentukan saat inisialisasi, untuk saat ini diabaikan
-}
+void Gemma4Integration::SetModelSize(Gemma4ModelSize size) {}
 
 } // namespace NeoEngine

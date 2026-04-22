@@ -10,6 +10,11 @@ HermesIntegration::HermesIntegration()
 HermesIntegration::~HermesIntegration() { Shutdown(); }
 
 bool HermesIntegration::Initialize(HermesModelType modelType) {
+#ifdef __ANDROID__
+    // Hermes agent tidak tersedia di Android APK
+    ready = false;
+    return false;
+#else
     if (ready) return true;
     std::string hermesPath = "/data/data/com.termux/files/usr/bin/hermes";
     if (!std::filesystem::exists(hermesPath)) {
@@ -20,6 +25,7 @@ bool HermesIntegration::Initialize(HermesModelType modelType) {
     currentModel = modelType;
     ready = true;
     return true;
+#endif
 }
 
 void HermesIntegration::Shutdown() {

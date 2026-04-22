@@ -1,0 +1,3 @@
+[submodule "FauzanEngine"]
+	path = FauzanEngine
+	url = https://github.com/Simulasi-Ekonomi/FauzanEngine.git
