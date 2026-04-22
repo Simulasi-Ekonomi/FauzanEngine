@@ -74,40 +74,6 @@ public class NeoEngineBridge {
                     Dispatchers.getIO(),
                     (scope, cont) -> liteRTManager.initialize(modelPath, cont)
                 );
-                // Optional: panggil native callback
-            }).start();
-        }
-    }
-
-    public static String sendPrompt(String prompt) {
-        if (liteRTManager == null) return "";
-        return BuildersKt.runBlocking(
-            Dispatchers.getIO(),
-            (scope, cont) -> liteRTManager.sendMessageSync(prompt, cont)
-        );
-    }
-
-    public static void shutdownLiteRT() {
-        if (liteRTManager != null) {
-            liteRTManager.shutdown();
-            liteRTManager = null;
-        }
-    }
-
-    // ========== LiteRT Integration ==========
-    private static LiteRTManager liteRTManager;
-    private static Context appContext;
-
-    public static void initLiteRT(String modelPath) {
-        if (liteRTManager == null && appContext != null) {
-            liteRTManager = new LiteRTManager(appContext);
-        }
-        if (liteRTManager != null) {
-            new Thread(() -> {
-                boolean success = BuildersKt.runBlocking(
-                    Dispatchers.getIO(),
-                    (scope, cont) -> liteRTManager.initialize(modelPath, cont)
-                );
                 // Optional: native callback
             }).start();
         }
