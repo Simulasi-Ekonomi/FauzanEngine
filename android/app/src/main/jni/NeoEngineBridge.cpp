@@ -1,6 +1,7 @@
 // =========================================================
 // NeoEngine JNI Bridge
 // Bridges C++ NeoEngine core with Java/Kotlin Android layer
+// Full scene management + LiteRT AI tool integration
 // =========================================================
 
 #include <jni.h>
@@ -10,126 +11,142 @@
 #include <string>
 #include <memory>
 #include <mutex>
+#include <unordered_map>
+#include <vector>
+#include <sstream>
 
 #define NEO_JNI_TAG "NeoEngine-JNI"
-#define NEO_LOGI(...) __android_log_print(ANDROID_LOG_INFO, NEO_JNI_TAG, __VA_ARGS__)
+#define NEO_LOGI(...) __android_log_print(ANDROID_LOG_INFO,  NEO_JNI_TAG, __VA_ARGS__)
 #define NEO_LOGE(...) __android_log_print(ANDROID_LOG_ERROR, NEO_JNI_TAG, __VA_ARGS__)
 #define NEO_LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, NEO_JNI_TAG, __VA_ARGS__)
 
-// Forward declarations
-class Engine;
-
 namespace NeoJNI {
 
-static JavaVM* g_JavaVM = nullptr;
-static jobject g_Activity = nullptr;
-static AAssetManager* g_AssetManager = nullptr;
-static std::mutex g_Mutex;
-static bool g_Initialized = false;
+static JavaVM*       g_JavaVM      = nullptr;
+static jobject       g_Activity    = nullptr;
+static AAssetManager* g_AssetMgr   = nullptr;
+static std::mutex    g_Mutex;
+static bool          g_Initialized = false;
+static bool          g_Running     = false;
+static float         g_DeltaTime   = 0.0f;
+static int           g_FrameCount  = 0;
+static float         g_FPS         = 0.0f;
 
-// Engine state
-static bool g_EngineRunning = false;
-static float g_DeltaTime = 0.0f;
-static int g_FrameCount = 0;
-static float g_FPS = 0.0f;
+struct Vec3 { float x = 0, y = 0, z = 0; };
 
-// Telemetry data for Aries agents
-struct TelemetryData {
-    float cpuTemp = 0.0f;
-    float gpuTemp = 0.0f;
-    float frameRate = 60.0f;
-    float memoryUsageMB = 0.0f;
-    float batteryLevel = 100.0f;
-    int activeEntities = 0;
-    int drawCalls = 0;
-    int triangleCount = 0;
+struct Actor {
+    int         id;
+    std::string name;
+    std::string type;
+    Vec3        position;
+    Vec3        rotation;
+    Vec3        scale{1,1,1};
+    bool        visible = true;
+    std::string color   = "#ffffff";
+    float       roughness = 0.5f;
+    float       metalness = 0.0f;
 };
 
-static TelemetryData g_Telemetry;
+static int                              g_NextActorId = 1;
+static std::unordered_map<int, Actor>   g_Actors;
+static std::unordered_map<std::string, int> g_ActorsByName;
 
-JavaVM* GetJavaVM() { return g_JavaVM; }
-AAssetManager* GetAssetManager() { return g_AssetManager; }
+struct Telemetry {
+    float fps       = 60.0f;
+    float cpuTemp   = 0.0f;
+    float gpuTemp   = 0.0f;
+    float memoryMB  = 0.0f;
+    float battery   = 100.0f;
+    int   entities  = 0;
+    int   drawCalls = 0;
+    int   triangles = 0;
+};
+static Telemetry g_Telemetry;
 
 JNIEnv* GetJNIEnv() {
     JNIEnv* env = nullptr;
-    if (g_JavaVM) {
-        int status = g_JavaVM->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6);
-        if (status == JNI_EDETACHED) {
-            g_JavaVM->AttachCurrentThread(&env, nullptr);
-        }
-    }
+    if (!g_JavaVM) return nullptr;
+    int st = g_JavaVM->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6);
+    if (st == JNI_EDETACHED)
+        g_JavaVM->AttachCurrentThread(&env, nullptr);
     return env;
+}
+
+static std::string jsonEscape(const std::string& s) {
+    std::string out;
+    for (char c : s) {
+        if (c == '"')  out += "\\\"";
+        else if (c == '\\') out += "\\\\";
+        else if (c == '\n') out += "\\n";
+        else out += c;
+    }
+    return out;
+}
+
+static std::string actorToJSON(const Actor& a) {
+    char buf[512];
+    snprintf(buf, sizeof(buf),
+        "{\"id\":%d,\"name\":\"%s\",\"type\":\"%s\","
+        "\"transform\":{\"position\":{\"x\":%.2f,\"y\":%.2f,\"z\":%.2f},"
+        "\"rotation\":{\"x\":%.2f,\"y\":%.2f,\"z\":%.2f},"
+        "\"scale\":{\"x\":%.2f,\"y\":%.2f,\"z\":%.2f}},"
+        "\"visible\":%s,\"color\":\"%s\",\"roughness\":%.2f,\"metalness\":%.2f}",
+        a.id, jsonEscape(a.name).c_str(), a.type.c_str(),
+        a.position.x, a.position.y, a.position.z,
+        a.rotation.x, a.rotation.y, a.rotation.z,
+        a.scale.x,    a.scale.y,    a.scale.z,
+        a.visible ? "true" : "false",
+        a.color.c_str(), a.roughness, a.metalness
+    );
+    return buf;
 }
 
 } // namespace NeoJNI
 
-// =========================================================
-// JNI Lifecycle
-// =========================================================
-
 extern "C" {
 
-JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* /*reserved*/) {
+JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void*) {
     NeoJNI::g_JavaVM = vm;
-    NEO_LOGI("JNI_OnLoad: NeoEngine native library loaded");
-
-    JNIEnv* env = nullptr;
-    if (vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) != JNI_OK) {
-        NEO_LOGE("JNI_OnLoad: Failed to get JNI environment");
-        return JNI_ERR;
-    }
-
+    NEO_LOGI("JNI_OnLoad: NeoEngine native loaded");
     return JNI_VERSION_1_6;
 }
 
-JNIEXPORT void JNICALL JNI_OnUnload(JavaVM* vm, void* /*reserved*/) {
-    NEO_LOGI("JNI_OnUnload: NeoEngine native library unloading");
+JNIEXPORT void JNICALL JNI_OnUnload(JavaVM*, void*) {
+    NEO_LOGI("JNI_OnUnload");
     NeoJNI::g_JavaVM = nullptr;
 }
 
-// =========================================================
-// Engine Core Bridge
-// =========================================================
-
 JNIEXPORT jboolean JNICALL
 Java_com_neoengine_core_NeoEngineBridge_nativeInit(
-    JNIEnv* env, jclass /*clazz*/,
+    JNIEnv* env, jclass,
     jobject activity, jobject assetManager,
-    jint screenWidth, jint screenHeight) {
+    jint w, jint h)
+{
+    std::lock_guard<std::mutex> lk(NeoJNI::g_Mutex);
+    NEO_LOGI("nativeInit %dx%d", w, h);
 
-    std::lock_guard<std::mutex> lock(NeoJNI::g_Mutex);
+    NeoJNI::g_Activity  = env->NewGlobalRef(activity);
+    NeoJNI::g_AssetMgr  = AAssetManager_fromJava(env, assetManager);
 
-    NEO_LOGI("nativeInit: Initializing NeoEngine (%dx%d)", screenWidth, screenHeight);
-
-    NeoJNI::g_Activity = env->NewGlobalRef(activity);
-    NeoJNI::g_AssetManager = AAssetManager_fromJava(env, assetManager);
-
-    if (!NeoJNI::g_AssetManager) {
-        NEO_LOGE("nativeInit: Failed to get AssetManager");
+    if (!NeoJNI::g_AssetMgr) {
+        NEO_LOGE("nativeInit: no AssetManager");
         env->DeleteGlobalRef(NeoJNI::g_Activity);
-        NeoJNI::g_Activity = nullptr;
         return JNI_FALSE;
     }
 
-    // Initialize engine subsystems
-    NeoJNI::g_EngineRunning = true;
+    NeoJNI::g_Running     = true;
     NeoJNI::g_Initialized = true;
-    NeoJNI::g_FrameCount = 0;
-
-    NEO_LOGI("nativeInit: Engine initialized successfully");
+    NeoJNI::g_FrameCount  = 0;
+    NEO_LOGI("nativeInit: OK");
     return JNI_TRUE;
 }
 
 JNIEXPORT void JNICALL
-Java_com_neoengine_core_NeoEngineBridge_nativeShutdown(
-    JNIEnv* env, jclass /*clazz*/) {
-
-    std::lock_guard<std::mutex> lock(NeoJNI::g_Mutex);
-
-    NEO_LOGI("nativeShutdown: Shutting down NeoEngine");
-    NeoJNI::g_EngineRunning = false;
+Java_com_neoengine_core_NeoEngineBridge_nativeShutdown(JNIEnv* env, jclass) {
+    std::lock_guard<std::mutex> lk(NeoJNI::g_Mutex);
+    NEO_LOGI("nativeShutdown");
+    NeoJNI::g_Running     = false;
     NeoJNI::g_Initialized = false;
-
     if (NeoJNI::g_Activity) {
         env->DeleteGlobalRef(NeoJNI::g_Activity);
         NeoJNI::g_Activity = nullptr;
@@ -137,139 +154,202 @@ Java_com_neoengine_core_NeoEngineBridge_nativeShutdown(
 }
 
 JNIEXPORT void JNICALL
-Java_com_neoengine_core_NeoEngineBridge_nativeTick(
-    JNIEnv* /*env*/, jclass /*clazz*/, jfloat deltaTime) {
-
-    if (!NeoJNI::g_EngineRunning) return;
-
-    NeoJNI::g_DeltaTime = deltaTime;
+Java_com_neoengine_core_NeoEngineBridge_nativeTick(JNIEnv*, jclass, jfloat dt) {
+    if (!NeoJNI::g_Running) return;
+    NeoJNI::g_DeltaTime = dt;
     NeoJNI::g_FrameCount++;
 
-    // Calculate FPS
-    static float fpsTimer = 0.0f;
-    static int fpsFrames = 0;
-    fpsTimer += deltaTime;
-    fpsFrames++;
+    static float fpsTimer  = 0.0f;
+    static int   fpsFrames = 0;
+    fpsTimer += dt; fpsFrames++;
     if (fpsTimer >= 1.0f) {
         NeoJNI::g_FPS = static_cast<float>(fpsFrames) / fpsTimer;
-        NeoJNI::g_Telemetry.frameRate = NeoJNI::g_FPS;
-        fpsTimer = 0.0f;
-        fpsFrames = 0;
+        NeoJNI::g_Telemetry.fps = NeoJNI::g_FPS;
+        NeoJNI::g_Telemetry.entities = static_cast<int>(NeoJNI::g_Actors.size());
+        fpsTimer = 0.0f; fpsFrames = 0;
     }
 }
 
 JNIEXPORT void JNICALL
-Java_com_neoengine_core_NeoEngineBridge_nativeRender(
-    JNIEnv* /*env*/, jclass /*clazz*/) {
-
-    if (!NeoJNI::g_EngineRunning) return;
-    // Rendering is handled by the Vulkan/GLES render thread
-}
-
-// =========================================================
-// Input Bridge
-// =========================================================
+Java_com_neoengine_core_NeoEngineBridge_nativeRender(JNIEnv*, jclass) {}
 
 JNIEXPORT void JNICALL
 Java_com_neoengine_core_NeoEngineBridge_nativeTouchEvent(
-    JNIEnv* /*env*/, jclass /*clazz*/,
-    jint action, jfloat x, jfloat y, jint pointerId) {
-
-    if (!NeoJNI::g_EngineRunning) return;
-
-    NEO_LOGD("Touch event: action=%d pos=(%.1f, %.1f) pointer=%d",
-             action, x, y, pointerId);
+    JNIEnv*, jclass, jint action, jfloat x, jfloat y, jint ptr)
+{
+    NEO_LOGD("Touch a=%d (%.1f,%.1f) ptr=%d", action, x, y, ptr);
 }
 
 JNIEXPORT void JNICALL
-Java_com_neoengine_core_NeoEngineBridge_nativeKeyEvent(
-    JNIEnv* /*env*/, jclass /*clazz*/,
-    jint keyCode, jint action) {
-
-    if (!NeoJNI::g_EngineRunning) return;
-
-    NEO_LOGD("Key event: keyCode=%d action=%d", keyCode, action);
-}
-
-JNIEXPORT void JNICALL
-Java_com_neoengine_core_NeoEngineBridge_nativeSensorEvent(
-    JNIEnv* /*env*/, jclass /*clazz*/,
-    jint sensorType, jfloat x, jfloat y, jfloat z) {
-
-    if (!NeoJNI::g_EngineRunning) return;
-    // Accelerometer/Gyroscope data for motion controls
+Java_com_neoengine_core_NeoEngineBridge_nativeKeyEvent(JNIEnv*, jclass, jint key, jint action) {
+    NEO_LOGD("Key key=%d action=%d", key, action);
 }
 
 // =========================================================
-// Telemetry Bridge (for Aries AI agents)
+// Scene Management – called by NeoEngineToolSet (LiteRT)
 // =========================================================
 
-JNIEXPORT jfloat JNICALL
-Java_com_neoengine_core_NeoEngineBridge_nativeGetFPS(
-    JNIEnv* /*env*/, jclass /*clazz*/) {
-    return NeoJNI::g_FPS;
+JNIEXPORT jint JNICALL
+Java_com_neoengine_core_NeoEngineBridgeNative_nativeAddActor(
+    JNIEnv* env, jobject,
+    jstring jtype, jstring jname,
+    jfloat x, jfloat y, jfloat z)
+{
+    const char* type = env->GetStringUTFChars(jtype, nullptr);
+    const char* name = env->GetStringUTFChars(jname, nullptr);
+
+    std::lock_guard<std::mutex> lk(NeoJNI::g_Mutex);
+    int id = NeoJNI::g_NextActorId++;
+
+    NeoJNI::Actor a;
+    a.id       = id;
+    a.name     = name;
+    a.type     = type;
+    a.position = {x, y, z};
+
+    NeoJNI::g_Actors[id]        = a;
+    NeoJNI::g_ActorsByName[name] = id;
+
+    NEO_LOGI("addActor: id=%d name=%s type=%s pos=(%.1f,%.1f,%.1f)", id, name, type, x, y, z);
+
+    env->ReleaseStringUTFChars(jtype, type);
+    env->ReleaseStringUTFChars(jname, name);
+    return id;
 }
 
-JNIEXPORT jfloat JNICALL
-Java_com_neoengine_core_NeoEngineBridge_nativeGetCPUTemp(
-    JNIEnv* /*env*/, jclass /*clazz*/) {
-    return NeoJNI::g_Telemetry.cpuTemp;
+JNIEXPORT jboolean JNICALL
+Java_com_neoengine_core_NeoEngineBridgeNative_nativeDeleteActor(
+    JNIEnv* env, jobject, jstring jname)
+{
+    const char* name = env->GetStringUTFChars(jname, nullptr);
+    std::lock_guard<std::mutex> lk(NeoJNI::g_Mutex);
+
+    auto it = NeoJNI::g_ActorsByName.find(name);
+    bool found = (it != NeoJNI::g_ActorsByName.end());
+    if (found) {
+        NeoJNI::g_Actors.erase(it->second);
+        NeoJNI::g_ActorsByName.erase(it);
+        NEO_LOGI("deleteActor: %s", name);
+    }
+
+    env->ReleaseStringUTFChars(jname, name);
+    return found ? JNI_TRUE : JNI_FALSE;
 }
 
 JNIEXPORT void JNICALL
-Java_com_neoengine_core_NeoEngineBridge_nativeSetThrottleLevel(
-    JNIEnv* /*env*/, jclass /*clazz*/, jint level) {
+Java_com_neoengine_core_NeoEngineBridgeNative_nativeSetTransform(
+    JNIEnv* env, jobject, jstring jname,
+    jfloat px, jfloat py, jfloat pz,
+    jfloat rx, jfloat ry, jfloat rz,
+    jfloat sx, jfloat sy, jfloat sz)
+{
+    const char* name = env->GetStringUTFChars(jname, nullptr);
+    std::lock_guard<std::mutex> lk(NeoJNI::g_Mutex);
 
-    NEO_LOGI("Throttle level set to %d by Aries agent", level);
-    // Adjust engine performance based on Aries AI decision
-    // 0 = no throttle, 1 = light, 2 = medium, 3 = heavy
+    auto it = NeoJNI::g_ActorsByName.find(name);
+    if (it != NeoJNI::g_ActorsByName.end()) {
+        auto& a   = NeoJNI::g_Actors[it->second];
+        a.position = {px, py, pz};
+        a.rotation = {rx, ry, rz};
+        a.scale    = {sx, sy, sz};
+        NEO_LOGD("setTransform: %s pos=(%.1f,%.1f,%.1f)", name, px, py, pz);
+    }
+
+    env->ReleaseStringUTFChars(jname, name);
 }
 
 JNIEXPORT jstring JNICALL
-Java_com_neoengine_core_NeoEngineBridge_nativeGetTelemetryJSON(
-    JNIEnv* env, jclass /*clazz*/) {
+Java_com_neoengine_core_NeoEngineBridgeNative_nativeGetSceneJSON(JNIEnv* env, jobject) {
+    std::lock_guard<std::mutex> lk(NeoJNI::g_Mutex);
 
+    std::ostringstream ss;
+    ss << "{\"actors\":[";
+    bool first = true;
+    for (auto& [id, actor] : NeoJNI::g_Actors) {
+        if (!first) ss << ",";
+        ss << NeoJNI::actorToJSON(actor);
+        first = false;
+    }
+    ss << "],\"actorCount\":" << NeoJNI::g_Actors.size() << "}";
+
+    return env->NewStringUTF(ss.str().c_str());
+}
+
+JNIEXPORT jstring JNICALL
+Java_com_neoengine_core_NeoEngineBridgeNative_nativeGetTelemetryJSON(JNIEnv* env, jobject) {
     auto& t = NeoJNI::g_Telemetry;
-    char buf[512];
+    char buf[256];
     snprintf(buf, sizeof(buf),
         "{\"fps\":%.1f,\"cpuTemp\":%.1f,\"gpuTemp\":%.1f,"
         "\"memoryMB\":%.1f,\"battery\":%.1f,"
         "\"entities\":%d,\"drawCalls\":%d,\"triangles\":%d}",
-        t.frameRate, t.cpuTemp, t.gpuTemp,
-        t.memoryUsageMB, t.batteryLevel,
-        t.activeEntities, t.drawCalls, t.triangleCount);
-
+        t.fps, t.cpuTemp, t.gpuTemp,
+        t.memoryMB, t.battery,
+        t.entities, t.drawCalls, t.triangles);
     return env->NewStringUTF(buf);
 }
 
 // =========================================================
-// Scene Management Bridge
+// Telemetry (existing API)
 // =========================================================
 
+JNIEXPORT jfloat JNICALL
+Java_com_neoengine_core_NeoEngineBridge_nativeGetFPS(JNIEnv*, jclass) {
+    return NeoJNI::g_FPS;
+}
+
+JNIEXPORT jfloat JNICALL
+Java_com_neoengine_core_NeoEngineBridge_nativeGetCPUTemp(JNIEnv*, jclass) {
+    return NeoJNI::g_Telemetry.cpuTemp;
+}
+
+JNIEXPORT void JNICALL
+Java_com_neoengine_core_NeoEngineBridge_nativeSetThrottleLevel(JNIEnv*, jclass, jint level) {
+    NEO_LOGI("Throttle level=%d (set by Aries)", level);
+}
+
+JNIEXPORT jstring JNICALL
+Java_com_neoengine_core_NeoEngineBridge_nativeGetTelemetryJSON(JNIEnv* env, jclass) {
+    auto& t = NeoJNI::g_Telemetry;
+    char buf[256];
+    snprintf(buf, sizeof(buf),
+        "{\"fps\":%.1f,\"cpuTemp\":%.1f,\"gpuTemp\":%.1f,"
+        "\"memoryMB\":%.1f,\"battery\":%.1f,"
+        "\"entities\":%d,\"drawCalls\":%d,\"triangles\":%d}",
+        t.fps, t.cpuTemp, t.gpuTemp,
+        t.memoryMB, t.battery,
+        t.entities, t.drawCalls, t.triangles);
+    return env->NewStringUTF(buf);
+}
+
 JNIEXPORT jint JNICALL
-Java_com_neoengine_core_NeoEngineBridge_nativeGetActorCount(
-    JNIEnv* /*env*/, jclass /*clazz*/) {
-    return NeoJNI::g_Telemetry.activeEntities;
+Java_com_neoengine_core_NeoEngineBridge_nativeGetActorCount(JNIEnv*, jclass) {
+    return static_cast<jint>(NeoJNI::g_Actors.size());
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_neoengine_core_NeoEngineBridge_nativeLoadScene(
-    JNIEnv* env, jclass /*clazz*/, jstring scenePath) {
-
-    const char* path = env->GetStringUTFChars(scenePath, nullptr);
-    NEO_LOGI("Loading scene: %s", path);
-    env->ReleaseStringUTFChars(scenePath, path);
+Java_com_neoengine_core_NeoEngineBridge_nativeLoadScene(JNIEnv* env, jclass, jstring path) {
+    const char* p = env->GetStringUTFChars(path, nullptr);
+    NEO_LOGI("LoadScene: %s", p);
+    env->ReleaseStringUTFChars(path, p);
     return JNI_TRUE;
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_neoengine_core_NeoEngineBridge_nativeSaveScene(
-    JNIEnv* env, jclass /*clazz*/, jstring scenePath) {
-
-    const char* path = env->GetStringUTFChars(scenePath, nullptr);
-    NEO_LOGI("Saving scene: %s", path);
-    env->ReleaseStringUTFChars(scenePath, path);
+Java_com_neoengine_core_NeoEngineBridge_nativeSaveScene(JNIEnv* env, jclass, jstring path) {
+    const char* p = env->GetStringUTFChars(path, nullptr);
+    NEO_LOGI("SaveScene: %s", p);
+    env->ReleaseStringUTFChars(path, p);
     return JNI_TRUE;
+}
+
+// =========================================================
+// LiteRT callback
+// =========================================================
+
+JNIEXPORT void JNICALL
+Java_com_neoengine_core_NeoEngineBridge_nativeOnLiteRTInitialized(JNIEnv*, jclass, jboolean ok) {
+    NEO_LOGI("LiteRT initialized: %s", ok ? "OK" : "FAILED");
 }
 
 } // extern "C"
