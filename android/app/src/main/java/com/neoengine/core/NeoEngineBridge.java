@@ -94,3 +94,8 @@ public class NeoEngineBridge {
     // Native callback from C++
     public static native void nativeOnLiteRTInitialized(boolean success);
 }
+
+    // ========== Massive World Streaming ==========
+    public static native void startWorldStreaming(int seed, float sizeKm);
+    public static native void updateCameraPosition(float x, float y, float z);
+    public static native void stopWorldStreaming();

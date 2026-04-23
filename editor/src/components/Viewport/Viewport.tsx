@@ -381,6 +381,23 @@ function FPSCounter() {
   return null;
 }
 
+// =========================================================
+// CAMERA STREAMING UPDATER FOR MASSIVE WORLD
+// =========================================================
+function CameraStreamingUpdater() {
+  const { camera } = useThree();
+  useFrame(() => {
+    if (typeof (window as any).NeoEngineBridge !== 'undefined') {
+      (window as any).NeoEngineBridge.updateCameraPosition(
+        camera.position.x,
+        camera.position.y,
+        camera.position.z
+      );
+    }
+  });
+  return null;
+}
+
 function SceneContent() {
   const actors = useEditorStore((s) => s.actors);
   const selectedActorId = useEditorStore((s) => s.selectedActorId);
@@ -395,6 +412,7 @@ function SceneContent() {
     <>
       <ambientLight intensity={0.3} />
       <FPSCounter />
+      <CameraStreamingUpdater />
 
       {gridVisible && (
         <Grid
