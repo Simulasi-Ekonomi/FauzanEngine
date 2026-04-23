@@ -26,6 +26,22 @@ public class NeoEngineActivity extends Activity {
 
         webView = new WebView(this);
         setContentView(webView);
+        // ===== TEST BUTTON FOR WORLD STREAMING =====
+        android.widget.Button testWorldBtn = new android.widget.Button(this);
+        testWorldBtn.setText("🌍 Generate 10km World");
+        testWorldBtn.setBackgroundColor(0xFF2a5a2a);
+        testWorldBtn.setTextColor(0xFFFFFFFF);
+        testWorldBtn.setOnClickListener(v -> {
+            NeoEngineBridge.startWorldStreaming(12345, 10.0f);
+            testWorldBtn.setText("⏳ Generating...");
+            testWorldBtn.setEnabled(false);
+        });
+        android.widget.FrameLayout.LayoutParams params = new android.widget.FrameLayout.LayoutParams(
+            android.widget.FrameLayout.LayoutParams.WRAP_CONTENT,
+            android.widget.FrameLayout.LayoutParams.WRAP_CONTENT);
+        params.gravity = android.view.Gravity.BOTTOM | android.view.Gravity.END;
+        params.setMargins(0, 0, 16, 16);
+        addContentView(testWorldBtn, params);
 
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
