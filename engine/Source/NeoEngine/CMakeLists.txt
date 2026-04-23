@@ -127,3 +127,14 @@ if(Vulkan_FOUND)
     target_link_libraries(neo_core Vulkan::Vulkan)
     target_compile_definitions(neo_core PRIVATE NEO_VULKAN_ENABLED=1)
 endif()
+
+# =========================================================
+# Procedural World Generator Dependencies
+# =========================================================
+# FastNoiseLite (header-only)
+target_include_directories(neo_core PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/World/FastNoiseLite)
+# Cereal (header-only)
+target_include_directories(neo_core PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/World/cereal/include)
+
+# Add ProceduralWorldGenerator source
+target_sources(neo_core PRIVATE World/ProceduralWorldGenerator.cpp)
