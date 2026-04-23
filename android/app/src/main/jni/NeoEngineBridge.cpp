@@ -1,7 +1,5 @@
 // =========================================================
-// NeoEngine JNI Bridge
-// Bridges C++ NeoEngine core with Java/Kotlin Android layer
-// Full scene management + LiteRT AI tool integration
+// NeoEngine JNI Bridge - with Massive World Streaming
 // =========================================================
 
 #include <jni.h>
@@ -14,11 +12,20 @@
 #include <unordered_map>
 #include <vector>
 #include <sstream>
+#include <thread>
+#include <atomic>
+#include <chrono>
 
 #define NEO_JNI_TAG "NeoEngine-JNI"
 #define NEO_LOGI(...) __android_log_print(ANDROID_LOG_INFO,  NEO_JNI_TAG, __VA_ARGS__)
 #define NEO_LOGE(...) __android_log_print(ANDROID_LOG_ERROR, NEO_JNI_TAG, __VA_ARGS__)
 #define NEO_LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, NEO_JNI_TAG, __VA_ARGS__)
+
+// Forward declaration
+namespace NeoEngine {
+    class ProceduralWorldGenerator;
+    struct WorldConfig;
+}
 
 namespace NeoJNI {
 
@@ -31,6 +38,14 @@ static bool          g_Running     = false;
 static float         g_DeltaTime   = 0.0f;
 static int           g_FrameCount  = 0;
 static float         g_FPS         = 0.0f;
+
+// World streaming state
+static std::unique_ptr<NeoEngine::ProceduralWorldGenerator> g_WorldGenerator;
+static std::thread g_StreamingThread;
+static std::atomic<bool> g_StreamingActive{false};
+static float g_CameraX = 0.0f, g_CameraZ = 0.0f;
+static std::mutex g_StreamMutex;
+static std::vector<NeoEngine::PlacedObject> g_PendingObjects;
 
 struct Vec3 { float x = 0, y = 0, z = 0; };
 
@@ -103,18 +118,151 @@ static std::string actorToJSON(const Actor& a) {
 
 } // namespace NeoJNI
 
+// Include ProceduralWorldGenerator setelah namespace
+#include "World/ProceduralWorldGenerator.h"
+
 extern "C" {
 
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void*) {
     NeoJNI::g_JavaVM = vm;
-    NEO_LOGI("JNI_OnLoad: NeoEngine native loaded");
+    NEO_LOGI("JNI_OnLoad: NeoEngine native loaded with World Streaming");
     return JNI_VERSION_1_6;
 }
 
 JNIEXPORT void JNICALL JNI_OnUnload(JavaVM*, void*) {
+    NeoJNI::g_StreamingActive = false;
+    if (NeoJNI::g_StreamingThread.joinable()) {
+        NeoJNI::g_StreamingThread.join();
+    }
+    NeoJNI::g_WorldGenerator.reset();
     NEO_LOGI("JNI_OnUnload");
     NeoJNI::g_JavaVM = nullptr;
 }
+
+// =========================================================
+// Massive World Streaming
+// =========================================================
+
+JNIEXPORT void JNICALL
+Java_com_neoengine_core_NeoEngineBridge_startWorldStreaming(
+    JNIEnv* env, jclass, jint seed, jfloat sizeKm)
+{
+    std::lock_guard<std::mutex> lk(NeoJNI::g_Mutex);
+    NEO_LOGI("startWorldStreaming: seed=%d, size=%.1f km", seed, sizeKm);
+
+    // Stop existing streaming
+    if (NeoJNI::g_StreamingActive) {
+        NeoJNI::g_StreamingActive = false;
+        if (NeoJNI::g_StreamingThread.joinable()) {
+            NeoJNI::g_StreamingThread.join();
+        }
+    }
+
+    // Clear existing actors
+    NeoJNI::g_Actors.clear();
+    NeoJNI::g_ActorsByName.clear();
+    NeoJNI::g_NextActorId = 1;
+
+    // Initialize world generator
+    NeoEngine::WorldConfig cfg;
+    cfg.worldSizeKm = sizeKm;
+    cfg.seed = seed;
+    cfg.chunkSizeM = 256.0f;
+    cfg.treeDensity = 0.03f;
+    cfg.rockDensity = 0.01f;
+    cfg.heightScale = 200.0f;
+
+    NeoJNI::g_WorldGenerator = std::make_unique<NeoEngine::ProceduralWorldGenerator>(cfg);
+    NeoJNI::g_WorldGenerator->PrecomputeWorld();
+
+    // Start streaming thread
+    NeoJNI::g_StreamingActive = true;
+    NeoJNI::g_StreamingThread = std::thread([]() {
+        NEO_LOGI("World streaming thread started");
+        
+        while (NeoJNI::g_StreamingActive) {
+            // Get camera position
+            float camX, camZ;
+            {
+                std::lock_guard<std::mutex> lk(NeoJNI::g_StreamMutex);
+                camX = NeoJNI::g_CameraX;
+                camZ = NeoJNI::g_CameraZ;
+            }
+
+            // Calculate current chunk
+            int chunkSize = static_cast<int>(NeoJNI::g_WorldGenerator->GetConfig().chunkSizeM);
+            int camChunkX = static_cast<int>(std::floor(camX / chunkSize));
+            int camChunkZ = static_cast<int>(std::floor(camZ / chunkSize));
+
+            // Load chunks in radius 3 (3 chunks = 768m radius)
+            for (int dx = -3; dx <= 3; ++dx) {
+                for (int dz = -3; dz <= 3; ++dz) {
+                    if (!NeoJNI::g_StreamingActive) break;
+                    int cx = camChunkX + dx;
+                    int cz = camChunkZ + dz;
+                    
+                    // Check if chunk already loaded (simple check by actor count in area)
+                    bool loaded = false;
+                    {
+                        std::lock_guard<std::mutex> lk(NeoJNI::g_Mutex);
+                        // TODO: implement proper chunk tracking
+                    }
+                    if (loaded) continue;
+
+                    // Generate chunk
+                    NeoEngine::WorldChunk chunk = NeoJNI::g_WorldGenerator->GenerateChunk(cx, cz);
+                    
+                    // Convert to actors and add to scene
+                    std::lock_guard<std::mutex> lk(NeoJNI::g_Mutex);
+                    for (const auto& obj : chunk.objects) {
+                        NeoJNI::Actor a;
+                        a.id = NeoJNI::g_NextActorId++;
+                        a.name = obj.type + "_" + std::to_string(a.id);
+                        a.type = obj.type;
+                        a.position = {obj.position.x, obj.position.y, obj.position.z};
+                        a.rotation = {obj.rotation.x, obj.rotation.y, obj.rotation.z};
+                        a.scale = {obj.scale.x, obj.scale.y, obj.scale.z};
+                        
+                        NeoJNI::g_Actors[a.id] = a;
+                        NeoJNI::g_ActorsByName[a.name] = a.id;
+                    }
+                    
+                    NEO_LOGD("Loaded chunk (%d, %d) with %zu objects", cx, cz, chunk.objects.size());
+                }
+            }
+
+            // Sleep to avoid overwhelming the device
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+        NEO_LOGI("World streaming thread stopped");
+    });
+
+    NEO_LOGI("World streaming started");
+}
+
+JNIEXPORT void JNICALL
+Java_com_neoengine_core_NeoEngineBridge_updateCameraPosition(
+    JNIEnv*, jclass, jfloat x, jfloat y, jfloat z)
+{
+    std::lock_guard<std::mutex> lk(NeoJNI::g_StreamMutex);
+    NeoJNI::g_CameraX = x;
+    NeoJNI::g_CameraZ = z;
+}
+
+JNIEXPORT void JNICALL
+Java_com_neoengine_core_NeoEngineBridge_stopWorldStreaming(
+    JNIEnv*, jclass)
+{
+    NEO_LOGI("stopWorldStreaming");
+    NeoJNI::g_StreamingActive = false;
+    if (NeoJNI::g_StreamingThread.joinable()) {
+        NeoJNI::g_StreamingThread.join();
+    }
+}
+
+// =========================================================
+// Engine Core (existing)
+// =========================================================
 
 JNIEXPORT jboolean JNICALL
 Java_com_neoengine_core_NeoEngineBridge_nativeInit(
